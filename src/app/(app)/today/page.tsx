@@ -25,12 +25,13 @@ export default async function TodayPage() {
     <div className="mx-auto max-w-2xl px-4 pt-6 pb-10 sm:px-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div
-            aria-hidden
+          <Link
+            href="/profile"
+            aria-label="Open profile"
             className="flex size-11 items-center justify-center rounded-full bg-primary-soft text-lg font-black text-accent-foreground"
           >
             {initial}
-          </div>
+          </Link>
           <div className="flex items-center gap-1.5 rounded-full bg-muted px-3 py-1.5 text-sm font-bold">
             <Flame className="size-4 text-warning" />
             {profile?.current_streak ?? 0}

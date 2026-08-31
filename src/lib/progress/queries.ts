@@ -11,6 +11,27 @@ export interface ConsistencyStats {
   weekCompleted: number;
 }
 
+export interface LifetimeStats {
+  totalWorkouts: number;
+  totalHoursExercised: number;
+}
+
+export async function getLifetimeStats(userId: string): Promise<LifetimeStats> {
+  const supabase = await createClient();
+  const { data, count } = await supabase
+    .from("workout_sessions")
+    .select("total_duration_seconds", { count: "exact" })
+    .eq("user_id", userId)
+    .eq("status", "completed");
+
+  const totalSeconds = (data ?? []).reduce((sum, row) => sum + (row.total_duration_seconds ?? 0), 0);
+
+  return {
+    totalWorkouts: count ?? 0,
+    totalHoursExercised: Math.round((totalSeconds / 3600) * 10) / 10,
+  };
+}
+
 export async function getConsistencyStats(userId: string, timezone = "UTC"): Promise<ConsistencyStats> {
   const supabase = await createClient();
 

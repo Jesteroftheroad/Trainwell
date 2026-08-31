@@ -2,22 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LogOut, Flame } from "lucide-react";
+import { Flame } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NAV_ITEMS } from "./nav-items";
-import { createClient } from "@/lib/supabase/client";
-import { useRouter } from "next/navigation";
+import { SignOutButton } from "@/components/sign-out-button";
 
 export function Sidebar({ fullName, streak }: { fullName: string | null; streak: number }) {
   const pathname = usePathname();
-  const router = useRouter();
-
-  async function handleSignOut() {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    router.push("/login");
-    router.refresh();
-  }
 
   return (
     <aside className="sticky top-0 hidden h-dvh w-64 flex-col border-r border-border bg-card px-4 py-6 md:flex">
@@ -59,16 +50,13 @@ export function Sidebar({ fullName, streak }: { fullName: string | null; streak:
       </div>
 
       <div className="mt-3 flex items-center justify-between px-1">
-        <span className="truncate text-sm font-medium text-muted-foreground">
-          {fullName ?? "Athlete"}
-        </span>
-        <button
-          onClick={handleSignOut}
-          aria-label="Sign out"
-          className="rounded-full p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
+        <Link
+          href="/profile"
+          className="truncate text-sm font-medium text-muted-foreground hover:text-foreground"
         >
-          <LogOut className="size-4" />
-        </button>
+          {fullName ?? "Athlete"}
+        </Link>
+        <SignOutButton />
       </div>
     </aside>
   );

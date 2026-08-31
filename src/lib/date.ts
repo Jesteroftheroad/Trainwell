@@ -67,3 +67,9 @@ export function formatLongDateWithOrdinal(isoDate: string): string {
   const weekdayMonth = date.toLocaleDateString("en-US", { weekday: "long", month: "long" });
   return `${weekdayMonth} ${day}${ordinalSuffix(day)}`;
 }
+
+export function daysSince(isoDateTime: string): number {
+  const then = new Date(isoDateTime).getTime();
+  const now = Date.now();
+  return Math.max(0, Math.floor((now - then) / 86_400_000));
+}

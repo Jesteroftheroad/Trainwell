@@ -3,6 +3,7 @@ import { ChevronRight, Moon } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { MoveToTomorrowButton } from "@/components/workout/move-to-tomorrow-button";
+import { VoiceGuidedBadge } from "@/components/workout/voice-guided-badge";
 import { WORKOUT_TYPE_ICON, WORKOUT_TYPE_LABEL } from "@/lib/workout/display";
 import type { ScheduledWorkoutSummary } from "@/lib/workout/types";
 
@@ -32,9 +33,12 @@ export function TodoWorkoutCard({ workout }: { workout: ScheduledWorkoutSummary 
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-base font-bold">{workout.workoutName}</p>
-          <p className="text-sm text-muted-foreground">
-            {WORKOUT_TYPE_LABEL[workout.workoutType]}
-            {workout.estimatedDurationMinutes ? ` · ${workout.estimatedDurationMinutes} min` : ""}
+          <p className="flex items-center gap-1 text-sm text-muted-foreground">
+            <span>
+              {WORKOUT_TYPE_LABEL[workout.workoutType]}
+              {workout.estimatedDurationMinutes ? ` · ${workout.estimatedDurationMinutes} min` : ""}
+            </span>
+            <VoiceGuidedBadge />
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">

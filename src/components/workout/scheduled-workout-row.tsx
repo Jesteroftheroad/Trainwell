@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { WORKOUT_TYPE_ICON } from "@/lib/workout/display";
+import { VoiceGuidedBadge } from "./voice-guided-badge";
 import type { ScheduledWorkoutSummary } from "@/lib/workout/types";
 
 export function ScheduledWorkoutRow({ workout }: { workout: ScheduledWorkoutSummary }) {
@@ -16,9 +17,10 @@ export function ScheduledWorkoutRow({ workout }: { workout: ScheduledWorkoutSumm
       </div>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-bold">{workout.workoutName}</p>
-        {workout.estimatedDurationMinutes && (
-          <p className="text-xs text-muted-foreground">{workout.estimatedDurationMinutes} mins</p>
-        )}
+        <p className="flex items-center gap-1 text-xs text-muted-foreground">
+          {workout.estimatedDurationMinutes && <span>{workout.estimatedDurationMinutes} mins</span>}
+          <VoiceGuidedBadge />
+        </p>
       </div>
       <ChevronRight className="size-5 shrink-0 text-muted-foreground" />
     </Link>
