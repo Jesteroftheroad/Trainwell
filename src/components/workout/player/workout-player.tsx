@@ -1,12 +1,14 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { SkipForward, Undo2, X } from "lucide-react";
+import { SkipForward, Undo2, Volume2, VolumeX, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { recordCompletedSet } from "@/lib/workout/actions";
 import { formatSetLine } from "@/lib/workout/format";
+import { announceSet } from "@/lib/workout/speech";
+import { useSpeech } from "@/lib/workout/use-speech";
 import { RestTimerOverlay } from "./rest-timer-overlay";
 import { TimedSetView } from "./timed-set-view";
 import { RepsWeightSetView } from "./reps-weight-set-view";
@@ -30,6 +32,7 @@ export function WorkoutPlayer({
 }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
+  const { enabled: voiceEnabled, setEnabled: setVoiceEnabled, speak } = useSpeech();
 
   const startIndex = useMemo(() => {
     const done = new Set(initiallyCompletedKeys);
@@ -56,6 +59,11 @@ export function WorkoutPlayer({
     setEditedReps(current?.set.reps ?? null);
     setEditedWeight(current?.set.weight ?? null);
   }
+
+  useEffect(() => {
+    if (current && !resting) speak(announceSet(current));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentKey, resting]);
 
   function persistSet(item: PlayerQueueItem, skipped: boolean) {
     startTransition(async () => {
@@ -99,7 +107,7 @@ export function WorkoutPlayer({
   }
 
   if (!current) {
-    return <SessionCompleteView sessionId={sessionId} workoutName={workoutName} />;
+    return <SessionCompleteView sessionId={sessionId} workoutName={workoutName} speak={speak} />;
   }
 
   if (resting && current.restSecondsAfter && next) {
@@ -108,6 +116,7 @@ export function WorkoutPlayer({
         seconds={current.restSecondsAfter}
         nextExerciseName={next.exercise.name}
         onDone={handleRestDone}
+        speak={speak}
       />
     );
   }
@@ -126,6 +135,13 @@ export function WorkoutPlayer({
           <X className="size-5" />
         </button>
         <Progress value={progressPct} className="flex-1" />
+        <button
+          aria-label={voiceEnabled ? "Mute coach voice" : "Unmute coach voice"}
+          onClick={() => setVoiceEnabled(!voiceEnabled)}
+          className="flex size-9 items-center justify-center rounded-full text-muted-foreground hover:bg-muted"
+        >
+          {voiceEnabled ? <Volume2 className="size-5" /> : <VolumeX className="size-5" />}
+        </button>
       </header>
 
       <div className="flex flex-1 flex-col px-6 pb-8 pt-6">
@@ -145,6 +161,7 @@ export function WorkoutPlayer({
             seconds={current.set.durationSeconds!}
             side={current.set.side}
             onComplete={() => handleComplete(false)}
+            speak={speak}
           />
         ) : (
           <RepsWeightSetView

@@ -1,6 +1,6 @@
 import { getCurrentUserAndProfile } from "@/lib/profile/queries";
 import { getCompletedSessions, getUpcomingScheduled } from "@/lib/workout/queries";
-import { formatLongDateWithOrdinal } from "@/lib/date";
+import { formatLongDateWithOrdinal, getTodayIsoInTimezone } from "@/lib/date";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScheduledWorkoutRow } from "@/components/workout/scheduled-workout-row";
 import { CompletedWorkoutRow } from "@/components/workout/completed-workout-row";
@@ -44,12 +44,13 @@ function ScheduledList({
 }
 
 export default async function WorkoutsPage() {
-  const { userId } = await getCurrentUserAndProfile();
+  const { userId, profile } = await getCurrentUserAndProfile();
+  const todayIso = getTodayIsoInTimezone(profile?.timezone ?? "UTC");
 
   const [upcoming, extras, backups, completed] = await Promise.all([
-    getUpcomingScheduled(userId, "main"),
-    getUpcomingScheduled(userId, "extra"),
-    getUpcomingScheduled(userId, "backup"),
+    getUpcomingScheduled(userId, "main", todayIso),
+    getUpcomingScheduled(userId, "extra", todayIso),
+    getUpcomingScheduled(userId, "backup", todayIso),
     getCompletedSessions(userId),
   ]);
 

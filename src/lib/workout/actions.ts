@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { Side, WeightUnit } from "@/lib/supabase/database.types";
 import { revalidatePath } from "next/cache";
 import { getExerciseHistory } from "./queries";
+import { getTodayIsoInTimezone, toIsoDate } from "@/lib/date";
 
 export interface ExerciseHistoryEntry {
   id: string;
@@ -118,7 +119,7 @@ export async function recordCompletedSet(input: RecordSetInput): Promise<{ ok: t
   return { ok: true };
 }
 
-async function recalculateStreak(userId: string): Promise<void> {
+async function recalculateStreak(userId: string, timezone: string): Promise<void> {
   const supabase = await createClient();
   const { data: sessions } = await supabase
     .from("workout_sessions")
@@ -129,20 +130,28 @@ async function recalculateStreak(userId: string): Promise<void> {
 
   if (!sessions) return;
 
+  // Bucket each completion into the user's local calendar day, not the
+  // server's (UTC on Vercel) — otherwise a late-evening workout can land on
+  // the "wrong" day and break the streak.
+  const dayFormatter = new Intl.DateTimeFormat("en-CA", { timeZone: timezone });
   const completedDays = new Set(
-    sessions.filter((s) => s.completed_at).map((s) => (s.completed_at as string).slice(0, 10)),
+    sessions
+      .filter((s) => s.completed_at)
+      .map((s) => dayFormatter.format(new Date(s.completed_at as string))),
   );
 
+  const [year, month, day] = getTodayIsoInTimezone(timezone).split("-").map(Number);
+  const cursor = new Date(year, month - 1, day);
+
   let streak = 0;
-  const cursor = new Date();
   // Today may not have a completed session yet if this runs mid-day before
   // finishing a workout; only start counting from today if it's present,
   // otherwise start from yesterday so an already-open streak isn't zeroed.
-  if (!completedDays.has(cursor.toISOString().slice(0, 10))) {
+  if (!completedDays.has(toIsoDate(cursor))) {
     cursor.setDate(cursor.getDate() - 1);
   }
 
-  while (completedDays.has(cursor.toISOString().slice(0, 10))) {
+  while (completedDays.has(toIsoDate(cursor))) {
     streak += 1;
     cursor.setDate(cursor.getDate() - 1);
   }
@@ -200,7 +209,13 @@ export async function completeWorkoutSession(
       .eq("id", session.scheduled_workout_id);
   }
 
-  await recalculateStreak(user.id);
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("timezone")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  await recalculateStreak(user.id, profile?.timezone ?? "UTC");
 
   revalidatePath("/today");
   revalidatePath("/workouts");
@@ -219,5 +234,62 @@ export async function abandonWorkoutSession(sessionId: string): Promise<{ ok: tr
 
   if (error) return { error: error.message };
   revalidatePath("/today");
+  return { ok: true };
+}
+
+export async function moveWorkoutToTomorrow(
+  scheduledWorkoutId: string,
+): Promise<{ ok: true } | { error: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Not signed in." };
+
+  const { data: row, error: fetchError } = await supabase
+    .from("scheduled_workouts")
+    .select("id, user_id, scheduled_date, slot, status")
+    .eq("id", scheduledWorkoutId)
+    .maybeSingle();
+
+  if (fetchError || !row) return { error: fetchError?.message ?? "Workout not found." };
+  if (row.user_id !== user.id) return { error: "Not your workout." };
+  if (row.status !== "scheduled") return { error: "Only upcoming workouts can be moved." };
+
+  const [year, month, day] = row.scheduled_date.split("-").map(Number);
+  const tomorrow = new Date(year, month - 1, day);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowIso = toIsoDate(tomorrow);
+
+  // If something's already scheduled in this slot tomorrow, swap the two
+  // dates instead of silently overwriting it.
+  const { data: conflict } = await supabase
+    .from("scheduled_workouts")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("slot", row.slot)
+    .eq("scheduled_date", tomorrowIso)
+    .neq("id", row.id)
+    .maybeSingle();
+
+  if (conflict) {
+    const { error: swapError } = await supabase
+      .from("scheduled_workouts")
+      .update({ scheduled_date: row.scheduled_date })
+      .eq("id", conflict.id);
+    if (swapError) return { error: swapError.message };
+  }
+
+  const { error } = await supabase
+    .from("scheduled_workouts")
+    .update({ scheduled_date: tomorrowIso })
+    .eq("id", row.id);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/today");
+  revalidatePath("/workouts");
+  revalidatePath(`/workouts/${scheduledWorkoutId}`);
+
   return { ok: true };
 }

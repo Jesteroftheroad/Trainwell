@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { getScheduledWorkoutDetail } from "@/lib/workout/queries";
 import { SectionBlock } from "@/components/workout/section-block";
 import { StartWorkoutButton } from "@/components/workout/start-workout-button";
+import { MoveToTomorrowButton } from "@/components/workout/move-to-tomorrow-button";
 
 export default async function WorkoutPreviewPage({
   params,
@@ -27,7 +28,14 @@ export default async function WorkoutPreviewPage({
         >
           <ArrowLeft className="size-5" />
         </Link>
-        <h1 className="truncate text-base font-bold">{workout.name}</h1>
+        <h1 className="min-w-0 flex-1 truncate text-base font-bold">{workout.name}</h1>
+        {scheduled.status === "scheduled" && (
+          <MoveToTomorrowButton
+            scheduledWorkoutId={scheduled.scheduledWorkoutId}
+            variant="ghost"
+            size="icon"
+          />
+        )}
       </header>
 
       <div className="px-4 pt-4">

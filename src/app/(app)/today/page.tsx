@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Bell, Flame } from "lucide-react";
 import { getCurrentUserAndProfile } from "@/lib/profile/queries";
 import { getTodaysMainWorkout, getWeekOverview } from "@/lib/workout/queries";
-import { getWeekIsoDates, toIsoDate } from "@/lib/date";
+import { getTodayIsoInTimezone, getWeekIsoDatesInTimezone } from "@/lib/date";
 import { GoalCard } from "@/components/today/goal-card";
 import { WeeklySurveyCard } from "@/components/today/weekly-survey-card";
 import { WeekDaySelector } from "@/components/today/week-day-selector";
@@ -10,8 +10,9 @@ import { TodoWorkoutCard } from "@/components/today/todo-workout-card";
 
 export default async function TodayPage() {
   const { userId, profile } = await getCurrentUserAndProfile();
-  const todayIso = toIsoDate(new Date());
-  const weekDates = getWeekIsoDates();
+  const timezone = profile?.timezone ?? "UTC";
+  const todayIso = getTodayIsoInTimezone(timezone);
+  const weekDates = getWeekIsoDatesInTimezone(timezone);
 
   const [todaysWorkout, weekOverview] = await Promise.all([
     getTodaysMainWorkout(userId, todayIso),

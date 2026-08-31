@@ -10,17 +10,27 @@ export function RestTimerOverlay({
   seconds,
   nextExerciseName,
   onDone,
+  speak,
 }: {
   seconds: number;
   nextExerciseName: string;
   onDone: () => void;
+  speak: (text: string) => void;
 }) {
-  const { remaining, start } = useCountdown(seconds, onDone);
+  const { remaining, isRunning, start } = useCountdown(seconds, onDone);
 
   useEffect(() => {
     start();
+    speak(`Rest. Up next, ${nextExerciseName}.`);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (isRunning && remaining > 0 && remaining <= 3) {
+      speak(String(remaining));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [remaining, isRunning]);
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-6 bg-primary px-6 text-primary-foreground">

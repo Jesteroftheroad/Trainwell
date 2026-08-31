@@ -208,9 +208,9 @@ export async function getWeekOverview(userId: string, weekDates: string[]): Prom
 export async function getUpcomingScheduled(
   userId: string,
   slot: ScheduledSlot,
+  todayIso: string,
 ): Promise<ScheduledWorkoutSummary[]> {
   const supabase = await createClient();
-  const todayIso = new Date().toISOString().slice(0, 10);
   const { data, error } = await supabase
     .from("scheduled_workouts")
     .select(SCHEDULED_SELECT)

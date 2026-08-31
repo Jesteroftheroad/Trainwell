@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ChevronRight, Moon } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { MoveToTomorrowButton } from "@/components/workout/move-to-tomorrow-button";
 import { WORKOUT_TYPE_ICON, WORKOUT_TYPE_LABEL } from "@/lib/workout/display";
 import type { ScheduledWorkoutSummary } from "@/lib/workout/types";
 
@@ -36,12 +37,19 @@ export function TodoWorkoutCard({ workout }: { workout: ScheduledWorkoutSummary 
             {workout.estimatedDurationMinutes ? ` · ${workout.estimatedDurationMinutes} min` : ""}
           </p>
         </div>
-        <Button asChild size="sm">
-          <Link href={`/workouts/${workout.scheduledWorkoutId}`}>
-            Start
-            <ChevronRight className="size-4" />
-          </Link>
-        </Button>
+        <div className="flex shrink-0 items-center gap-2">
+          <MoveToTomorrowButton
+            scheduledWorkoutId={workout.scheduledWorkoutId}
+            variant="ghost"
+            size="icon"
+          />
+          <Button asChild size="sm">
+            <Link href={`/workouts/${workout.scheduledWorkoutId}`}>
+              Start
+              <ChevronRight className="size-4" />
+            </Link>
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );

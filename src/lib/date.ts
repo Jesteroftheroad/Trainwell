@@ -16,6 +16,25 @@ export function getWeekIsoDates(reference: Date = new Date()): string[] {
   });
 }
 
+/**
+ * "Today" as the app server sees it (`new Date()`) is the server's own clock —
+ * on Vercel that's UTC, not the visiting user's local date. Near midnight
+ * that's off by a day. This resolves the wall-clock date in the user's saved
+ * IANA timezone instead, using the en-CA locale's YYYY-MM-DD formatting.
+ */
+export function getTodayIsoInTimezone(timezone: string): string {
+  try {
+    return new Intl.DateTimeFormat("en-CA", { timeZone: timezone }).format(new Date());
+  } catch {
+    return toIsoDate(new Date());
+  }
+}
+
+export function getWeekIsoDatesInTimezone(timezone: string): string[] {
+  const [year, month, day] = getTodayIsoInTimezone(timezone).split("-").map(Number);
+  return getWeekIsoDates(new Date(year, month - 1, day));
+}
+
 export function formatLongDate(isoDate: string): string {
   const [year, month, day] = isoDate.split("-").map(Number);
   const date = new Date(year, month - 1, day);

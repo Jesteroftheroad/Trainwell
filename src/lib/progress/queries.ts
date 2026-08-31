@@ -1,6 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import type { MetricType } from "@/lib/supabase/database.types";
+import { getWeekIsoDatesInTimezone } from "@/lib/date";
 
 export interface ConsistencyStats {
   totalCompletedWorkouts: number;
@@ -10,13 +11,12 @@ export interface ConsistencyStats {
   weekCompleted: number;
 }
 
-export async function getConsistencyStats(userId: string): Promise<ConsistencyStats> {
+export async function getConsistencyStats(userId: string, timezone = "UTC"): Promise<ConsistencyStats> {
   const supabase = await createClient();
 
-  const startOfWeek = new Date();
-  const day = startOfWeek.getDay();
-  startOfWeek.setDate(startOfWeek.getDate() - day);
-  const weekStartIso = startOfWeek.toISOString().slice(0, 10);
+  const weekDates = getWeekIsoDatesInTimezone(timezone);
+  const weekStartIso = weekDates[0];
+  const weekEndIso = weekDates[weekDates.length - 1];
 
   const [{ data: profile }, { count: totalCompleted }, { data: weekRows }] = await Promise.all([
     supabase.from("profiles").select("current_streak, longest_streak").eq("id", userId).maybeSingle(),
@@ -30,7 +30,8 @@ export async function getConsistencyStats(userId: string): Promise<ConsistencySt
       .select("status")
       .eq("user_id", userId)
       .eq("slot", "main")
-      .gte("scheduled_date", weekStartIso),
+      .gte("scheduled_date", weekStartIso)
+      .lte("scheduled_date", weekEndIso),
   ]);
 
   return {

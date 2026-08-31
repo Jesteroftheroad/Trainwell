@@ -5,9 +5,9 @@ import { StrengthSection } from "@/components/progress/strength-section";
 import { BodyMetricsSection } from "@/components/progress/body-metrics-section";
 
 export default async function ProgressPage() {
-  const { userId } = await getCurrentUserAndProfile();
+  const { userId, profile } = await getCurrentUserAndProfile();
   const [stats, trainedExercises] = await Promise.all([
-    getConsistencyStats(userId),
+    getConsistencyStats(userId, profile?.timezone ?? "UTC"),
     getTrainedExercises(userId),
   ]);
 

@@ -19,3 +19,18 @@ export async function updateGoal(goalText: string): Promise<{ ok: true } | { err
   revalidatePath("/today");
   return { ok: true };
 }
+
+export async function updateTimezone(timezone: string): Promise<{ ok: true } | { error: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Not signed in." };
+
+  const { error } = await supabase.from("profiles").update({ timezone }).eq("id", user.id);
+
+  if (error) return { error: error.message };
+  revalidatePath("/today");
+  revalidatePath("/workouts");
+  return { ok: true };
+}

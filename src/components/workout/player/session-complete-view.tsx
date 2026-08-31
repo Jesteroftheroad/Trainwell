@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { PartyPopper } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -9,12 +9,19 @@ import { completeWorkoutSession } from "@/lib/workout/actions";
 export function SessionCompleteView({
   sessionId,
   workoutName,
+  speak,
 }: {
   sessionId: string;
   workoutName: string;
+  speak: (text: string) => void;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    speak(`Workout complete. Great job finishing ${workoutName}.`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function handleFinish() {
     startTransition(async () => {
