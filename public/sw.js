@@ -1,4 +1,4 @@
-const CACHE_NAME = "ascend-shell-v2";
+const CACHE_NAME = "ascend-shell-v3";
 const APP_SHELL = ["/today", "/manifest.webmanifest", "/icon.svg"];
 
 self.addEventListener("install", (event) => {
