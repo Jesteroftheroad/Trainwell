@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { ChevronRight, Dumbbell } from "lucide-react";
+import { ChevronRight, Dumbbell, Trophy } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -117,7 +117,10 @@ export function ExerciseRow({ instance }: { instance: WorkoutExerciseInstance })
           {!isPending && history && history.length > 0 && (
             <div className="mt-1 flex flex-col text-sm">
               {history.slice(0, 6).map((h) => (
-                <span key={h.id}>
+                <span key={h.id} className="flex items-center gap-1.5">
+                  {h.isPersonalRecord && (
+                    <Trophy className="size-3.5 shrink-0 text-warning" aria-label="Personal record" />
+                  )}
                   {h.weight != null && h.reps != null
                     ? `${h.reps} reps with ${h.weight} ${h.weightUnit}`
                     : h.durationSeconds != null
@@ -125,7 +128,7 @@ export function ExerciseRow({ instance }: { instance: WorkoutExerciseInstance })
                       : h.reps != null
                         ? `${h.reps} reps`
                         : "—"}
-                  <span className="ml-2 text-xs text-muted-foreground">
+                  <span className="ml-1 text-xs text-muted-foreground">
                     {new Date(h.completedAt).toLocaleDateString()}
                   </span>
                 </span>

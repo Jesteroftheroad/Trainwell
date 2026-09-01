@@ -72,6 +72,7 @@ export type ProfileRow = {
   timezone: string;
   current_streak: number;
   longest_streak: number;
+  streak_anchor_date: string | null;
   goal_text: string | null;
   created_at: string;
   updated_at: string;
@@ -175,6 +176,7 @@ export type CompletedSetRow = {
   distance: number | null;
   side: Side;
   skipped: boolean;
+  is_personal_record: boolean;
   completed_at: string;
 }
 

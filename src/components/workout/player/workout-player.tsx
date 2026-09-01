@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { SkipForward, Undo2, Volume2, VolumeX, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -31,7 +31,6 @@ export function WorkoutPlayer({
   initiallyCompletedKeys: string[];
 }) {
   const router = useRouter();
-  const [, startTransition] = useTransition();
   const { enabled: voiceEnabled, setEnabled: setVoiceEnabled, speak } = useSpeech();
 
   const startIndex = useMemo(() => {
@@ -45,6 +44,7 @@ export function WorkoutPlayer({
 
   const [index, setIndex] = useState(startIndex);
   const [resting, setResting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [editedReps, setEditedReps] = useState<number | null>(null);
   const [editedWeight, setEditedWeight] = useState<number | null>(null);
   const [trackedKey, setTrackedKey] = useState<string | null>(null);
@@ -65,22 +65,21 @@ export function WorkoutPlayer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentKey, resting]);
 
-  function persistSet(item: PlayerQueueItem, skipped: boolean) {
-    startTransition(async () => {
-      await recordCompletedSet({
-        sessionId,
-        workoutExerciseId: item.workoutExerciseId,
-        exerciseId: item.exercise.id,
-        setIndex: item.set.setIndex,
-        reps: item.set.durationSeconds != null ? null : (editedReps ?? item.set.reps),
-        weight: item.set.durationSeconds != null ? null : (editedWeight ?? item.set.weight),
-        weightUnit: item.set.weightUnit,
-        durationSeconds: item.set.durationSeconds,
-        distance: item.set.distance,
-        side: item.set.side,
-        skipped,
-      });
+  async function persistSet(item: PlayerQueueItem, skipped: boolean) {
+    const result = await recordCompletedSet({
+      sessionId,
+      workoutExerciseId: item.workoutExerciseId,
+      exerciseId: item.exercise.id,
+      setIndex: item.set.setIndex,
+      reps: item.set.durationSeconds != null ? null : (editedReps ?? item.set.reps),
+      weight: item.set.durationSeconds != null ? null : (editedWeight ?? item.set.weight),
+      weightUnit: item.set.weightUnit,
+      durationSeconds: item.set.durationSeconds,
+      distance: item.set.distance,
+      side: item.set.side,
+      skipped,
     });
+    return "isPersonalRecord" in result ? result.isPersonalRecord : false;
   }
 
   function advance() {
@@ -91,10 +90,18 @@ export function WorkoutPlayer({
     setIndex((i) => i + 1);
   }
 
-  function handleComplete(skipped = false) {
-    if (!current) return;
-    persistSet(current, skipped);
-    advance();
+  async function handleComplete(skipped = false) {
+    if (!current || isSaving) return;
+    setIsSaving(true);
+    const isPersonalRecord = await persistSet(current, skipped);
+    setIsSaving(false);
+
+    if (isPersonalRecord) {
+      speak("New personal record!");
+      setTimeout(advance, 1400);
+    } else {
+      advance();
+    }
   }
 
   function handleRestDone() {
@@ -158,6 +165,7 @@ export function WorkoutPlayer({
 
         {isTimed ? (
           <TimedSetView
+            key={currentKey}
             seconds={current.set.durationSeconds!}
             side={current.set.side}
             onComplete={() => handleComplete(false)}
@@ -165,6 +173,7 @@ export function WorkoutPlayer({
           />
         ) : (
           <RepsWeightSetView
+            key={currentKey}
             reps={editedReps}
             weight={editedWeight}
             weightUnit={current.set.weightUnit}
@@ -181,14 +190,15 @@ export function WorkoutPlayer({
         <Button
           variant="ghost"
           className="gap-2 text-muted-foreground"
+          disabled={isSaving}
           onClick={() => handleComplete(true)}
         >
           <SkipForward className="size-4" />
           Skip
         </Button>
         {!isTimed && (
-          <Button size="lg" className="flex-1" onClick={() => handleComplete(false)}>
-            Mark Complete
+          <Button size="lg" className="flex-1" disabled={isSaving} onClick={() => handleComplete(false)}>
+            {isSaving ? "Saving…" : "Mark Complete"}
           </Button>
         )}
       </div>

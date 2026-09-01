@@ -176,32 +176,24 @@ export async function getTodaysMainWorkout(
   return mapScheduledRow(data);
 }
 
-export interface DaySummary {
-  isoDate: string;
-  hasWorkout: boolean;
-  isCompleted: boolean;
-}
-
-export async function getWeekOverview(userId: string, weekDates: string[]): Promise<DaySummary[]> {
+/** One main-slot scheduled workout per date in `weekDates`, in the same order (null = rest day). */
+export async function getWeekMainWorkouts(
+  userId: string,
+  weekDates: string[],
+): Promise<(ScheduledWorkoutSummary | null)[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("scheduled_workouts")
-    .select("scheduled_date, status")
+    .select(SCHEDULED_SELECT)
     .eq("user_id", userId)
     .eq("slot", "main")
     .in("scheduled_date", weekDates);
 
-  if (error || !data) {
-    return weekDates.map((isoDate) => ({ isoDate, hasWorkout: false, isCompleted: false }));
-  }
+  if (error || !data) return weekDates.map(() => null);
 
   return weekDates.map((isoDate) => {
-    const match = data.find((d) => d.scheduled_date === isoDate);
-    return {
-      isoDate,
-      hasWorkout: Boolean(match),
-      isCompleted: match?.status === "completed",
-    };
+    const row = data.find((d) => d.scheduled_date === isoDate);
+    return row ? mapScheduledRow(row) : null;
   });
 }
 
@@ -295,7 +287,7 @@ export async function getExerciseHistory(userId: string, exerciseId: string, lim
   const { data, error } = await supabase
     .from("completed_sets")
     .select(
-      "id, set_index, reps, weight, weight_unit, duration_seconds, distance, side, completed_at, workout_sessions!inner(user_id)",
+      "id, set_index, reps, weight, weight_unit, duration_seconds, distance, side, is_personal_record, completed_at, workout_sessions!inner(user_id)",
     )
     .eq("exercise_id", exerciseId)
     .eq("workout_sessions.user_id", userId)

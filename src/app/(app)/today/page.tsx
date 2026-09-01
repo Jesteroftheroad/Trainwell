@@ -1,12 +1,11 @@
 import Link from "next/link";
 import { Bell, Flame } from "lucide-react";
 import { getCurrentUserAndProfile } from "@/lib/profile/queries";
-import { getTodaysMainWorkout, getWeekOverview } from "@/lib/workout/queries";
+import { getWeekMainWorkouts } from "@/lib/workout/queries";
 import { getTodayIsoInTimezone, getWeekIsoDatesInTimezone } from "@/lib/date";
 import { GoalCard } from "@/components/today/goal-card";
 import { WeeklySurveyCard } from "@/components/today/weekly-survey-card";
-import { WeekDaySelector } from "@/components/today/week-day-selector";
-import { TodoWorkoutCard } from "@/components/today/todo-workout-card";
+import { DayWorkoutPanel } from "@/components/today/day-workout-panel";
 
 export default async function TodayPage() {
   const { userId, profile } = await getCurrentUserAndProfile();
@@ -14,10 +13,7 @@ export default async function TodayPage() {
   const todayIso = getTodayIsoInTimezone(timezone);
   const weekDates = getWeekIsoDatesInTimezone(timezone);
 
-  const [todaysWorkout, weekOverview] = await Promise.all([
-    getTodaysMainWorkout(userId, todayIso),
-    getWeekOverview(userId, weekDates),
-  ]);
+  const weekWorkouts = await getWeekMainWorkouts(userId, weekDates);
 
   const initial = (profile?.full_name ?? "A").trim().charAt(0).toUpperCase();
 
@@ -51,21 +47,16 @@ export default async function TodayPage() {
       </div>
 
       <section className="mt-8">
-        <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Today</h2>
-        <div className="mt-3">
-          <WeekDaySelector days={weekOverview} todayIso={todayIso} />
-        </div>
-      </section>
-
-      <section className="mt-8">
         <div className="flex items-center justify-between">
-          <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">To do</h2>
+          <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+            This week
+          </h2>
           <Link href="/workouts" className="text-xs font-semibold text-primary">
             View all
           </Link>
         </div>
         <div className="mt-3">
-          <TodoWorkoutCard workout={todaysWorkout} />
+          <DayWorkoutPanel weekDates={weekDates} todayIso={todayIso} weekWorkouts={weekWorkouts} />
         </div>
       </section>
     </div>

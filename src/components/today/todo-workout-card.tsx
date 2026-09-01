@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { ChevronRight, Moon } from "lucide-react";
+import { ChevronRight, CheckCircle2, Moon } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { MoveToTomorrowButton } from "@/components/workout/move-to-tomorrow-button";
+import { MoveToNextFreeDayButton } from "@/components/workout/move-to-next-free-day-button";
 import { VoiceGuidedBadge } from "@/components/workout/voice-guided-badge";
 import { WORKOUT_TYPE_ICON, WORKOUT_TYPE_LABEL } from "@/lib/workout/display";
 import type { ScheduledWorkoutSummary } from "@/lib/workout/types";
@@ -24,32 +24,47 @@ export function TodoWorkoutCard({ workout }: { workout: ScheduledWorkoutSummary 
   }
 
   const Icon = WORKOUT_TYPE_ICON[workout.workoutType];
+  const isCompleted = workout.status === "completed";
 
   return (
-    <Card>
+    <Card className={isCompleted ? "border-success/30 bg-success-soft/40" : undefined}>
       <CardContent className="flex items-center gap-3 p-4">
-        <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-accent-foreground">
-          <Icon className="size-6" />
+        <div
+          className={
+            isCompleted
+              ? "flex size-12 shrink-0 items-center justify-center rounded-xl bg-success-soft text-success"
+              : "flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-accent-foreground"
+          }
+        >
+          {isCompleted ? <CheckCircle2 className="size-6" /> : <Icon className="size-6" />}
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-base font-bold">{workout.workoutName}</p>
           <p className="flex items-center gap-1 text-sm text-muted-foreground">
-            <span>
-              {WORKOUT_TYPE_LABEL[workout.workoutType]}
-              {workout.estimatedDurationMinutes ? ` · ${workout.estimatedDurationMinutes} min` : ""}
-            </span>
-            <VoiceGuidedBadge />
+            {isCompleted ? (
+              <span className="font-semibold text-success">Workout completed</span>
+            ) : (
+              <>
+                <span>
+                  {WORKOUT_TYPE_LABEL[workout.workoutType]}
+                  {workout.estimatedDurationMinutes ? ` · ${workout.estimatedDurationMinutes} min` : ""}
+                </span>
+                <VoiceGuidedBadge />
+              </>
+            )}
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <MoveToTomorrowButton
-            scheduledWorkoutId={workout.scheduledWorkoutId}
-            variant="ghost"
-            size="icon"
-          />
-          <Button asChild size="sm">
+          {workout.status === "scheduled" && (
+            <MoveToNextFreeDayButton
+              scheduledWorkoutId={workout.scheduledWorkoutId}
+              variant="ghost"
+              size="icon"
+            />
+          )}
+          <Button asChild size="sm" variant={isCompleted ? "outline" : "default"}>
             <Link href={`/workouts/${workout.scheduledWorkoutId}`}>
-              Start
+              {isCompleted ? "Do it again" : "Start"}
               <ChevronRight className="size-4" />
             </Link>
           </Button>

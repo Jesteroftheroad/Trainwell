@@ -14,6 +14,7 @@ export interface ExerciseHistoryEntry {
   weightUnit: string | null;
   durationSeconds: number | null;
   side: string;
+  isPersonalRecord: boolean;
 }
 
 export async function fetchExerciseHistory(exerciseId: string): Promise<ExerciseHistoryEntry[]> {
@@ -32,6 +33,7 @@ export async function fetchExerciseHistory(exerciseId: string): Promise<Exercise
     weightUnit: r.weight_unit,
     durationSeconds: r.duration_seconds,
     side: r.side,
+    isPersonalRecord: r.is_personal_record,
   }));
 }
 
@@ -90,12 +92,76 @@ export interface RecordSetInput {
   skipped?: boolean;
 }
 
-export async function recordCompletedSet(input: RecordSetInput): Promise<{ ok: true } | { error: string }> {
+function estimatedOneRepMax(weight: number, reps: number): number {
+  return weight * (1 + reps / 30);
+}
+
+/**
+ * A set is a PR if it beats every prior completed set for this exercise on
+ * the metric that actually applies to it: estimated 1RM when both weight and
+ * reps are logged (so "more reps at a lower weight" isn't a false PR), max
+ * reps for bodyweight work, or longest hold for timed sets.
+ */
+async function isNewPersonalRecord(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  input: RecordSetInput,
+): Promise<boolean> {
+  if (input.skipped) return false;
+
+  const { data: priorSets } = await supabase
+    .from("completed_sets")
+    .select("reps, weight, duration_seconds, session_id, workout_exercise_id, set_index, workout_sessions!inner(user_id)")
+    .eq("exercise_id", input.exerciseId)
+    .eq("workout_sessions.user_id", userId)
+    .eq("skipped", false);
+
+  if (!priorSets) return false;
+
+  const priorOthers = priorSets.filter(
+    (s) =>
+      !(
+        s.session_id === input.sessionId &&
+        s.workout_exercise_id === input.workoutExerciseId &&
+        s.set_index === input.setIndex
+      ),
+  );
+
+  if (priorOthers.length === 0) return false;
+
+  if (input.durationSeconds != null) {
+    const bestDuration = Math.max(0, ...priorOthers.map((s) => s.duration_seconds ?? 0));
+    return input.durationSeconds > bestDuration;
+  }
+
+  if (input.weight != null && input.reps != null) {
+    const bestOneRm = Math.max(
+      0,
+      ...priorOthers
+        .filter((s) => s.weight != null && s.reps != null)
+        .map((s) => estimatedOneRepMax(s.weight as number, s.reps as number)),
+    );
+    return estimatedOneRepMax(input.weight, input.reps) > bestOneRm;
+  }
+
+  if (input.reps != null) {
+    const bestReps = Math.max(0, ...priorOthers.map((s) => s.reps ?? 0));
+    return input.reps > bestReps;
+  }
+
+  return false;
+}
+
+export async function recordCompletedSet(
+  input: RecordSetInput,
+): Promise<{ ok: true; isPersonalRecord: boolean } | { error: string }> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { error: "Not signed in." };
+
+  const isPersonalRecord = await isNewPersonalRecord(supabase, user.id, input);
 
   const { error } = await supabase.from("completed_sets").upsert(
     {
@@ -110,15 +176,25 @@ export async function recordCompletedSet(input: RecordSetInput): Promise<{ ok: t
       distance: input.distance ?? null,
       side: input.side ?? "none",
       skipped: input.skipped ?? false,
+      is_personal_record: isPersonalRecord,
       completed_at: new Date().toISOString(),
     },
     { onConflict: "session_id,workout_exercise_id,set_index" },
   );
 
   if (error) return { error: error.message };
-  return { ok: true };
+  return { ok: true, isPersonalRecord };
 }
 
+/**
+ * The streak is anchored to a start date rather than fully recomputed from
+ * scratch each time. That lets a manually-set starting streak (e.g. "I'm
+ * continuing a 100-day streak from before I switched apps") persist across
+ * future workouts instead of being silently overwritten back down to only
+ * what this app can itself prove — the anchor only moves forward when an
+ * actual gap (a missed day, checked against this app's own history from the
+ * anchor date onward) is detected.
+ */
 async function recalculateStreak(userId: string, timezone: string): Promise<void> {
   const supabase = await createClient();
   const { data: sessions } = await supabase
@@ -140,33 +216,42 @@ async function recalculateStreak(userId: string, timezone: string): Promise<void
       .map((s) => dayFormatter.format(new Date(s.completed_at as string))),
   );
 
-  const [year, month, day] = getTodayIsoInTimezone(timezone).split("-").map(Number);
-  const cursor = new Date(year, month - 1, day);
-
-  let streak = 0;
-  // Today may not have a completed session yet if this runs mid-day before
-  // finishing a workout; only start counting from today if it's present,
-  // otherwise start from yesterday so an already-open streak isn't zeroed.
-  if (!completedDays.has(toIsoDate(cursor))) {
-    cursor.setDate(cursor.getDate() - 1);
-  }
-
-  while (completedDays.has(toIsoDate(cursor))) {
-    streak += 1;
-    cursor.setDate(cursor.getDate() - 1);
-  }
+  const todayIso = getTodayIsoInTimezone(timezone);
+  const [year, month, day] = todayIso.split("-").map(Number);
+  const yesterday = new Date(year, month - 1, day);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayIso = toIsoDate(yesterday);
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("longest_streak")
+    .select("longest_streak, streak_anchor_date")
     .eq("id", userId)
     .maybeSingle();
+
+  let anchorIso = profile?.streak_anchor_date;
+
+  // This function only runs right after marking today's session complete, so
+  // today is always in completedDays here. The streak continues if there was
+  // also a completion yesterday, or if yesterday predates the anchor (nothing
+  // to check that far back — grandfathered in); otherwise a real gap broke
+  // it and the streak restarts today.
+  const continuing = anchorIso != null && (completedDays.has(yesterdayIso) || yesterdayIso < anchorIso);
+
+  if (!continuing) {
+    anchorIso = todayIso;
+  }
+
+  const [aYear, aMonth, aDay] = (anchorIso as string).split("-").map(Number);
+  const anchorDate = new Date(aYear, aMonth - 1, aDay);
+  const todayDate = new Date(year, month - 1, day);
+  const streak = Math.round((todayDate.getTime() - anchorDate.getTime()) / 86_400_000) + 1;
 
   await supabase
     .from("profiles")
     .update({
       current_streak: streak,
       longest_streak: Math.max(streak, profile?.longest_streak ?? 0),
+      streak_anchor_date: anchorIso,
     })
     .eq("id", userId);
 }
@@ -237,9 +322,11 @@ export async function abandonWorkoutSession(sessionId: string): Promise<{ ok: tr
   return { ok: true };
 }
 
-export async function moveWorkoutToTomorrow(
+const MAX_FREE_DAY_SEARCH_DAYS = 60;
+
+export async function moveWorkoutToNextFreeDay(
   scheduledWorkoutId: string,
-): Promise<{ ok: true } | { error: string }> {
+): Promise<{ ok: true; movedToIso: string } | { error: string }> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -256,33 +343,32 @@ export async function moveWorkoutToTomorrow(
   if (row.user_id !== user.id) return { error: "Not your workout." };
   if (row.status !== "scheduled") return { error: "Only upcoming workouts can be moved." };
 
-  const [year, month, day] = row.scheduled_date.split("-").map(Number);
-  const tomorrow = new Date(year, month - 1, day);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const tomorrowIso = toIsoDate(tomorrow);
-
-  // If something's already scheduled in this slot tomorrow, swap the two
-  // dates instead of silently overwriting it.
-  const { data: conflict } = await supabase
+  const { data: busyRows } = await supabase
     .from("scheduled_workouts")
-    .select("id")
+    .select("scheduled_date")
     .eq("user_id", user.id)
-    .eq("slot", row.slot)
-    .eq("scheduled_date", tomorrowIso)
-    .neq("id", row.id)
-    .maybeSingle();
+    .eq("slot", row.slot);
 
-  if (conflict) {
-    const { error: swapError } = await supabase
-      .from("scheduled_workouts")
-      .update({ scheduled_date: row.scheduled_date })
-      .eq("id", conflict.id);
-    if (swapError) return { error: swapError.message };
+  const busyDates = new Set((busyRows ?? []).map((r) => r.scheduled_date));
+
+  const [year, month, day] = row.scheduled_date.split("-").map(Number);
+  const cursor = new Date(year, month - 1, day);
+
+  let targetIso: string | null = null;
+  for (let i = 1; i <= MAX_FREE_DAY_SEARCH_DAYS; i++) {
+    cursor.setDate(cursor.getDate() + 1);
+    const candidate = toIsoDate(cursor);
+    if (!busyDates.has(candidate)) {
+      targetIso = candidate;
+      break;
+    }
   }
+
+  if (!targetIso) return { error: "No free day found in the next two months." };
 
   const { error } = await supabase
     .from("scheduled_workouts")
-    .update({ scheduled_date: tomorrowIso })
+    .update({ scheduled_date: targetIso })
     .eq("id", row.id);
 
   if (error) return { error: error.message };
@@ -291,5 +377,5 @@ export async function moveWorkoutToTomorrow(
   revalidatePath("/workouts");
   revalidatePath(`/workouts/${scheduledWorkoutId}`);
 
-  return { ok: true };
+  return { ok: true, movedToIso: targetIso };
 }
