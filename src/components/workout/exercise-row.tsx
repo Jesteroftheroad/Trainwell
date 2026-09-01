@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { ChevronRight, Dumbbell, Trophy } from "lucide-react";
+import { ChevronRight, Dumbbell, Trophy, Volume2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -11,8 +11,10 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { formatSetLine } from "@/lib/workout/format";
 import { fetchExerciseHistory, type ExerciseHistoryEntry } from "@/lib/workout/actions";
+import { useSpeech } from "@/lib/workout/use-speech";
 import { titleCase } from "@/lib/utils";
 import type { WorkoutExerciseInstance } from "@/lib/workout/types";
 
@@ -20,6 +22,7 @@ export function ExerciseRow({ instance }: { instance: WorkoutExerciseInstance })
   const [open, setOpen] = useState(false);
   const [history, setHistory] = useState<ExerciseHistoryEntry[] | null>(null);
   const [isPending, startTransition] = useTransition();
+  const { speak } = useSpeech();
 
   function handleOpenChange(next: boolean) {
     setOpen(next);
@@ -31,32 +34,54 @@ export function ExerciseRow({ instance }: { instance: WorkoutExerciseInstance })
     }
   }
 
+  function handleListen(e: React.MouseEvent) {
+    e.stopPropagation();
+    e.preventDefault();
+    const description = instance.exercise.instructions
+      ? `${instance.exercise.name}. ${instance.exercise.instructions}`
+      : instance.exercise.name;
+    speak(description);
+  }
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>
-        <button className="flex w-full items-center gap-3 rounded-2xl border border-border bg-card p-3 text-left transition-colors hover:bg-muted/60">
-          <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
-            <Dumbbell className="size-5" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-bold">
-              {instance.exercise.name}
-              {instance.side !== "none" && instance.side !== "alternating" && (
-                <span className="ml-1 text-xs font-normal text-muted-foreground">
-                  ({instance.side})
-                </span>
-              )}
-            </p>
-            {instance.notes && <p className="text-xs italic text-primary">{instance.notes}</p>}
-            <div className="mt-0.5 flex flex-col text-xs text-muted-foreground">
-              {instance.sets.map((set, idx) => (
-                <span key={set.id ?? idx}>{formatSetLine(set)}</span>
-              ))}
+      <div className="flex w-full items-center gap-3 rounded-2xl border border-border bg-card p-3 transition-colors hover:bg-muted/60">
+        <DialogTrigger asChild>
+          <button className="flex min-w-0 flex-1 items-center gap-3 text-left">
+            <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+              <Dumbbell className="size-5" />
             </div>
-          </div>
-          <ChevronRight className="size-5 shrink-0 text-muted-foreground" />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-bold">
+                {instance.exercise.name}
+                {instance.side !== "none" && instance.side !== "alternating" && (
+                  <span className="ml-1 text-xs font-normal text-muted-foreground">
+                    ({instance.side})
+                  </span>
+                )}
+              </p>
+              {instance.notes && <p className="text-xs italic text-primary">{instance.notes}</p>}
+              <div className="mt-0.5 flex flex-col text-xs text-muted-foreground">
+                {instance.sets.map((set, idx) => (
+                  <span key={set.id ?? idx}>{formatSetLine(set)}</span>
+                ))}
+              </div>
+            </div>
+          </button>
+        </DialogTrigger>
+        <button
+          onClick={handleListen}
+          aria-label={`Listen to how to perform ${instance.exercise.name}`}
+          className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
+          <Volume2 className="size-5" />
         </button>
-      </DialogTrigger>
+        <DialogTrigger asChild>
+          <button aria-label={`View ${instance.exercise.name} details`} className="shrink-0">
+            <ChevronRight className="size-5 text-muted-foreground" />
+          </button>
+        </DialogTrigger>
+      </div>
 
       <DialogContent>
         <DialogHeader>
@@ -77,9 +102,15 @@ export function ExerciseRow({ instance }: { instance: WorkoutExerciseInstance })
 
         {instance.exercise.instructions && (
           <div className="mt-4">
-            <h4 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
-              How to perform it
-            </h4>
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                How to perform it
+              </h4>
+              <Button variant="ghost" size="sm" className="gap-1.5 text-primary" onClick={handleListen}>
+                <Volume2 className="size-4" />
+                Listen
+              </Button>
+            </div>
             <p className="mt-1 text-sm">{instance.exercise.instructions}</p>
           </div>
         )}

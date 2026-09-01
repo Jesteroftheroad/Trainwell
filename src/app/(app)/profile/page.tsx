@@ -4,6 +4,7 @@ import { getCurrentUserAndProfile } from "@/lib/profile/queries";
 import { getLifetimeStats } from "@/lib/progress/queries";
 import { daysSince } from "@/lib/date";
 import { SignOutButton } from "@/components/sign-out-button";
+import { PushNotificationToggle } from "@/components/push-notification-toggle";
 import { Card, CardContent } from "@/components/ui/card";
 
 export default async function ProfilePage() {
@@ -47,6 +48,15 @@ export default async function ProfilePage() {
             <Stat label="Time exercised" value={`${stats.totalHoursExercised}h`} />
           </CardContent>
         </Card>
+      </section>
+
+      <section className="mt-6">
+        <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+          Notifications
+        </h2>
+        <div className="mt-3">
+          <PushNotificationToggle />
+        </div>
       </section>
 
       <SignOutButton

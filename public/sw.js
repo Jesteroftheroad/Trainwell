@@ -44,3 +44,36 @@ self.addEventListener("fetch", (event) => {
     );
   }
 });
+
+// Daily workout-reminder push notifications.
+self.addEventListener("push", (event) => {
+  let payload = { title: "Ascend", body: "You have a workout today." };
+  try {
+    if (event.data) payload = { ...payload, ...event.data.json() };
+  } catch {
+    // Ignore malformed payloads and fall back to the default text above.
+  }
+
+  event.waitUntil(
+    self.registration.showNotification(payload.title, {
+      body: payload.body,
+      icon: "/icon.svg",
+      badge: "/icon.svg",
+      data: { url: payload.url || "/today" },
+    }),
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = event.notification.data?.url || "/today";
+
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientsList) => {
+      for (const client of clientsList) {
+        if (client.url.includes(url) && "focus" in client) return client.focus();
+      }
+      if (self.clients.openWindow) return self.clients.openWindow(url);
+    }),
+  );
+});

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ChevronRight, CheckCircle2, Moon } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { MoveToNextFreeDayButton } from "@/components/workout/move-to-next-free-day-button";
+import { RescheduleButton } from "@/components/workout/reschedule-button";
 import { VoiceGuidedBadge } from "@/components/workout/voice-guided-badge";
 import { WORKOUT_TYPE_ICON, WORKOUT_TYPE_LABEL } from "@/lib/workout/display";
 import type { ScheduledWorkoutSummary } from "@/lib/workout/types";
@@ -56,8 +56,9 @@ export function TodoWorkoutCard({ workout }: { workout: ScheduledWorkoutSummary 
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {workout.status === "scheduled" && (
-            <MoveToNextFreeDayButton
+            <RescheduleButton
               scheduledWorkoutId={workout.scheduledWorkoutId}
+              currentDateIso={workout.scheduledDate}
               variant="ghost"
               size="icon"
             />

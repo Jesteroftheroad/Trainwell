@@ -6,8 +6,11 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // Skip Next.js internals and any public static asset (icons, manifest,
-  // service worker, images) so unauthenticated requests for them don't
-  // bounce through the login redirect.
-  matcher: ["/((?!_next/static|_next/image|sw\\.js|manifest\\.webmanifest|.*\\.(?:ico|svg|png|jpg|jpeg|webp|json)$).*)"],
+  // Skip Next.js internals, any public static asset (icons, manifest,
+  // service worker, images), and API routes (they authenticate themselves —
+  // e.g. /api/cron/* checks a bearer secret, not a user session) so those
+  // requests don't bounce through the login redirect.
+  matcher: [
+    "/((?!api/|_next/static|_next/image|sw\\.js|manifest\\.webmanifest|.*\\.(?:ico|svg|png|jpg|jpeg|webp|json)$).*)",
+  ],
 };

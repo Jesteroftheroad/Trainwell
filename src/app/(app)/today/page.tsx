@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Bell, Flame } from "lucide-react";
+import { Flame } from "lucide-react";
 import { getCurrentUserAndProfile } from "@/lib/profile/queries";
 import { getWeekMainWorkouts } from "@/lib/workout/queries";
 import { getTodayIsoInTimezone, getWeekIsoDatesInTimezone } from "@/lib/date";
@@ -19,26 +19,18 @@ export default async function TodayPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 pt-6 pb-10 sm:px-6">
-      <header className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Link
-            href="/profile"
-            aria-label="Open profile"
-            className="flex size-11 items-center justify-center rounded-full bg-primary-soft text-lg font-black text-accent-foreground"
-          >
-            {initial}
-          </Link>
-          <div className="flex items-center gap-1.5 rounded-full bg-muted px-3 py-1.5 text-sm font-bold">
-            <Flame className="size-4 text-warning" />
-            {profile?.current_streak ?? 0}
-          </div>
-        </div>
-        <button
-          aria-label="Notifications"
-          className="flex size-11 items-center justify-center rounded-full text-muted-foreground hover:bg-muted"
+      <header className="flex items-center gap-3">
+        <Link
+          href="/profile"
+          aria-label="Open profile"
+          className="flex size-11 items-center justify-center rounded-full bg-primary-soft text-lg font-black text-accent-foreground"
         >
-          <Bell className="size-5" />
-        </button>
+          {initial}
+        </Link>
+        <div className="flex items-center gap-1.5 rounded-full bg-muted px-3 py-1.5 text-sm font-bold">
+          <Flame className="size-4 text-warning" />
+          {profile?.current_streak ?? 0}
+        </div>
       </header>
 
       <div className="mt-6 flex flex-col gap-3">

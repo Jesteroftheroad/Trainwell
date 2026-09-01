@@ -4,7 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { getScheduledWorkoutDetail } from "@/lib/workout/queries";
 import { SectionBlock } from "@/components/workout/section-block";
 import { StartWorkoutButton } from "@/components/workout/start-workout-button";
-import { MoveToNextFreeDayButton } from "@/components/workout/move-to-next-free-day-button";
+import { RescheduleButton } from "@/components/workout/reschedule-button";
 
 export default async function WorkoutPreviewPage({
   params,
@@ -30,8 +30,9 @@ export default async function WorkoutPreviewPage({
         </Link>
         <h1 className="min-w-0 flex-1 truncate text-base font-bold">{workout.name}</h1>
         {scheduled.status === "scheduled" && (
-          <MoveToNextFreeDayButton
+          <RescheduleButton
             scheduledWorkoutId={scheduled.scheduledWorkoutId}
+            currentDateIso={scheduled.scheduledDate}
             variant="ghost"
             size="icon"
           />

@@ -73,6 +73,7 @@ export type ProfileRow = {
   current_streak: number;
   longest_streak: number;
   streak_anchor_date: string | null;
+  streak_last_confirmed_date: string | null;
   goal_text: string | null;
   created_at: string;
   updated_at: string;
@@ -208,6 +209,15 @@ export type MessageRow = {
   read_at: string | null;
 }
 
+export type PushSubscriptionRow = {
+  id: string;
+  user_id: string;
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+  created_at: string;
+}
+
 export type Database = {
   public: {
     Tables: {
@@ -249,6 +259,7 @@ export type Database = {
         MessageRow,
         [Relationship<"conversation_id", "conversations">, Relationship<"sender_id", "profiles">]
       >;
+      push_subscriptions: Table<PushSubscriptionRow, [Relationship<"user_id", "profiles">]>;
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
