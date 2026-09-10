@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CloudOff, SkipForward, Undo2, Volume2, VolumeX, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,8 @@ import { RestTimerOverlay } from "./rest-timer-overlay";
 import { TimedSetView } from "./timed-set-view";
 import { RepsWeightSetView } from "./reps-weight-set-view";
 import { SessionCompleteView } from "./session-complete-view";
-import type { PlayerQueueItem } from "@/lib/workout/types";
+import { SwapExerciseButton } from "./swap-exercise-button";
+import type { ExerciseSummary, PlayerQueueItem } from "@/lib/workout/types";
 
 function setKey(workoutExerciseId: string, setIndex: number): string {
   return `${workoutExerciseId}:${setIndex}`;
@@ -48,25 +49,36 @@ export function WorkoutPlayer({
   const [isSaving, setIsSaving] = useState(false);
   const [editedReps, setEditedReps] = useState<number | null>(null);
   const [editedWeight, setEditedWeight] = useState<number | null>(null);
+  const [editedDuration, setEditedDuration] = useState<number | null>(null);
   const [trackedKey, setTrackedKey] = useState<string | null>(null);
   const [prHits, setPrHits] = useState<string[]>([]);
   const [pendingSyncCount, setPendingSyncCount] = useState(getQueuedSetCount);
+  // Exercise swaps only affect this playthrough — keyed by workoutExerciseId
+  // so every set of that slot uses the substitute for the rest of the session.
+  const [exerciseOverrides, setExerciseOverrides] = useState<Record<string, ExerciseSummary>>({});
+  const lastAnnouncedExerciseId = useRef<string | null>(null);
 
-  const current = index < queue.length ? queue[index] : null;
-  const next = index + 1 < queue.length ? queue[index + 1] : null;
+  const rawCurrent = index < queue.length ? queue[index] : null;
+  const rawNext = index + 1 < queue.length ? queue[index + 1] : null;
+  const current = applyOverride(rawCurrent, exerciseOverrides);
+  const next = applyOverride(rawNext, exerciseOverrides);
 
-  // Reset the editable reps/weight whenever the active set changes.
+  // Reset the editable reps/weight/duration whenever the active set changes.
   const currentKey = current ? setKey(current.workoutExerciseId, current.set.setIndex) : null;
   if (currentKey !== trackedKey) {
     setTrackedKey(currentKey);
     setEditedReps(current?.set.reps ?? null);
     setEditedWeight(current?.set.weight ?? null);
+    setEditedDuration(current?.set.durationSeconds ?? null);
   }
 
   useEffect(() => {
-    if (current && !resting) speak(announceSet(current));
+    if (!current || resting) return;
+    const isNewExercise = lastAnnouncedExerciseId.current !== current.exercise.id;
+    lastAnnouncedExerciseId.current = current.exercise.id;
+    speak(announceSet(current, isNewExercise));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentKey, resting]);
+  }, [currentKey, current?.exercise.id, resting]);
 
   // Sync anything logged while offline as soon as we're back, and once on mount.
   useEffect(() => {
@@ -81,15 +93,16 @@ export function WorkoutPlayer({
   }, []);
 
   async function persistSet(item: PlayerQueueItem, skipped: boolean): Promise<boolean> {
+    const isTimedItem = item.set.durationSeconds != null;
     const input: RecordSetInput = {
       sessionId,
       workoutExerciseId: item.workoutExerciseId,
       exerciseId: item.exercise.id,
       setIndex: item.set.setIndex,
-      reps: item.set.durationSeconds != null ? null : (editedReps ?? item.set.reps),
-      weight: item.set.durationSeconds != null ? null : (editedWeight ?? item.set.weight),
+      reps: isTimedItem ? null : (editedReps ?? item.set.reps),
+      weight: isTimedItem ? null : (editedWeight ?? item.set.weight),
       weightUnit: item.set.weightUnit,
-      durationSeconds: item.set.durationSeconds,
+      durationSeconds: isTimedItem ? (editedDuration ?? item.set.durationSeconds) : null,
       distance: item.set.distance,
       side: item.set.side,
       skipped,
@@ -142,6 +155,17 @@ export function WorkoutPlayer({
 
   function handleBack() {
     setIndex((i) => Math.max(0, i - 1));
+  }
+
+  function handleSwap(exercise: ExerciseSummary) {
+    if (!rawCurrent) return;
+    setExerciseOverrides((prev) => ({ ...prev, [rawCurrent.workoutExerciseId]: exercise }));
+    lastAnnouncedExerciseId.current = null;
+  }
+
+  function handleListenHowTo() {
+    if (!current) return;
+    speak(current.exercise.instructions ? current.exercise.instructions : current.exercise.name);
   }
 
   if (!current) {
@@ -210,12 +234,26 @@ export function WorkoutPlayer({
           {formatSetLine(current.set)}
         </p>
 
+        <div className="mt-2 flex items-center justify-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="gap-1.5 text-muted-foreground"
+            onClick={handleListenHowTo}
+          >
+            <Volume2 className="size-4" />
+            How to
+          </Button>
+          <SwapExerciseButton exerciseId={current.exercise.id} onSwap={handleSwap} />
+        </div>
+
         {isTimed ? (
           <TimedSetView
             key={currentKey}
-            seconds={current.set.durationSeconds!}
+            seconds={editedDuration ?? current.set.durationSeconds!}
             side={current.set.side}
             onComplete={() => handleComplete(false)}
+            onSecondsChange={setEditedDuration}
             speak={speak}
           />
         ) : (
@@ -227,6 +265,12 @@ export function WorkoutPlayer({
             onRepsChange={setEditedReps}
             onWeightChange={setEditedWeight}
           />
+        )}
+
+        {next && (
+          <p className="mt-auto pt-4 text-center text-xs font-medium text-muted-foreground">
+            Up next: {next.exercise.name}
+          </p>
         )}
       </div>
 
@@ -251,4 +295,13 @@ export function WorkoutPlayer({
       </div>
     </div>
   );
+}
+
+function applyOverride(
+  item: PlayerQueueItem | null,
+  overrides: Record<string, ExerciseSummary>,
+): PlayerQueueItem | null {
+  if (!item) return null;
+  const override = overrides[item.workoutExerciseId];
+  return override ? { ...item, exercise: override } : item;
 }

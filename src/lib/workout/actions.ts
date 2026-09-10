@@ -3,8 +3,9 @@
 import { createClient } from "@/lib/supabase/server";
 import type { Side, WeightUnit } from "@/lib/supabase/database.types";
 import { revalidatePath } from "next/cache";
-import { getExerciseHistory } from "./queries";
-import { getTodayIsoInTimezone, toIsoDate } from "@/lib/date";
+import { getAlternativeExercises, getExerciseHistory } from "./queries";
+import type { ExerciseSummary } from "./types";
+import { getTodayIsoInTimezone } from "@/lib/date";
 import { estimateCaloriesBurned, lbToKg } from "./calories";
 
 export interface ExerciseHistoryEntry {
@@ -36,6 +37,16 @@ export async function fetchExerciseHistory(exerciseId: string): Promise<Exercise
     side: r.side,
     isPersonalRecord: r.is_personal_record,
   }));
+}
+
+export async function fetchAlternativeExercises(exerciseId: string): Promise<ExerciseSummary[]> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  return getAlternativeExercises(exerciseId);
 }
 
 export interface StartSessionInput {
@@ -195,29 +206,13 @@ export async function recordCompletedSet(
  * to be unbroken — real (this app has a completed session for it) or
  * grandfathered (it's the first check-in after a manual claim, so there's
  * nothing to verify before it). The anchor only resets when a day strictly
- * between the last confirmed date and today has no completed session.
+ * between the last confirmed date and today had a scheduled main workout
+ * that was never completed — a rest day (no main workout scheduled that day)
+ * or a workout that was later rescheduled off that date doesn't count
+ * against the streak, only a workout that was actually missed does.
  */
 async function recalculateStreak(userId: string, timezone: string): Promise<void> {
   const supabase = await createClient();
-  const { data: sessions } = await supabase
-    .from("workout_sessions")
-    .select("completed_at")
-    .eq("user_id", userId)
-    .eq("status", "completed")
-    .order("completed_at", { ascending: false });
-
-  if (!sessions) return;
-
-  // Bucket each completion into the user's local calendar day, not the
-  // server's (UTC on Vercel) — otherwise a late-evening workout can land on
-  // the "wrong" day and break the streak.
-  const dayFormatter = new Intl.DateTimeFormat("en-CA", { timeZone: timezone });
-  const completedDays = new Set(
-    sessions
-      .filter((s) => s.completed_at)
-      .map((s) => dayFormatter.format(new Date(s.completed_at as string))),
-  );
-
   const todayIso = getTodayIsoInTimezone(timezone);
 
   const { data: profile } = await supabase
@@ -230,10 +225,10 @@ async function recalculateStreak(userId: string, timezone: string): Promise<void
   const lastConfirmedIso = profile?.streak_last_confirmed_date ?? null;
 
   // This function only runs right after marking today's session complete, so
-  // today always belongs to the streak. Confirm every day is checked instead
-  // of only "yesterday", so multi-day gaps aren't missed.
+  // today always belongs to the streak.
   const brokenByGap =
-    lastConfirmedIso != null && dayHasGapBefore(lastConfirmedIso, todayIso, completedDays);
+    lastConfirmedIso != null &&
+    (await hasUnfulfilledMainWorkoutBetween(supabase, userId, lastConfirmedIso, todayIso));
 
   if (anchorIso == null || brokenByGap) {
     anchorIso = todayIso;
@@ -256,18 +251,27 @@ async function recalculateStreak(userId: string, timezone: string): Promise<void
     .eq("id", userId);
 }
 
-/** True if any day strictly between `fromIso` (exclusive) and `toIso` (exclusive) has no completed session. */
-function dayHasGapBefore(fromIso: string, toIso: string, completedDays: Set<string>): boolean {
-  const [fYear, fMonth, fDay] = fromIso.split("-").map(Number);
-  const cursor = new Date(fYear, fMonth - 1, fDay);
-  cursor.setDate(cursor.getDate() + 1);
+/**
+ * True if any day strictly between `fromIso` and `toIso` (both exclusive)
+ * had a main-slot workout scheduled for it that wasn't completed. Days with
+ * no main workout at all (rest days, or a day a workout was moved away from
+ * via rescheduleWorkout) never count as a gap.
+ */
+async function hasUnfulfilledMainWorkoutBetween(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  fromIso: string,
+  toIso: string,
+): Promise<boolean> {
+  const { data: rows } = await supabase
+    .from("scheduled_workouts")
+    .select("status")
+    .eq("user_id", userId)
+    .eq("slot", "main")
+    .gt("scheduled_date", fromIso)
+    .lt("scheduled_date", toIso);
 
-  while (toIsoDate(cursor) < toIso) {
-    if (!completedDays.has(toIsoDate(cursor))) return true;
-    cursor.setDate(cursor.getDate() + 1);
-  }
-
-  return false;
+  return (rows ?? []).some((r) => r.status !== "completed");
 }
 
 export interface WorkoutSessionSummary {

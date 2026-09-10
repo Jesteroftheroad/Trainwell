@@ -3,7 +3,7 @@
 import { Minus, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-function Stepper({
+export function Stepper({
   label,
   value,
   unit,

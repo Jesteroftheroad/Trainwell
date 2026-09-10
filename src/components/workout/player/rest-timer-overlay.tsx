@@ -5,6 +5,7 @@ import { Timer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatSeconds } from "@/lib/utils";
 import { useCountdown } from "@/lib/workout/use-countdown";
+import { useWakeLock } from "@/lib/workout/use-wake-lock";
 
 export function RestTimerOverlay({
   seconds,
@@ -18,6 +19,7 @@ export function RestTimerOverlay({
   speak: (text: string) => void;
 }) {
   const { remaining, isRunning, start } = useCountdown(seconds, onDone);
+  useWakeLock(isRunning);
 
   useEffect(() => {
     start();

@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import {
   buildPlayerQueue,
   exerciseRowToSummary,
+  type ExerciseSummary,
   type ScheduledWorkoutSummary,
   type WorkoutDetail,
   type WorkoutSection,
@@ -280,6 +281,32 @@ export async function getSessionForPlayer(
     workout,
     completedKeys: (completed ?? []).map((c) => `${c.workout_exercise_id}:${c.set_index}`),
   };
+}
+
+const EXERCISE_SELECT =
+  "id, name, slug, category, equipment, primary_muscles, secondary_muscles, instructions, common_mistakes, media_url, thumbnail_url, default_unit, created_at";
+
+/** Other exercises that hit at least one of the same primary muscles in the same category — candidates for an in-session swap. */
+export async function getAlternativeExercises(exerciseId: string, limit = 6): Promise<ExerciseSummary[]> {
+  const supabase = await createClient();
+  const { data: current } = await supabase
+    .from("exercises")
+    .select("category, primary_muscles")
+    .eq("id", exerciseId)
+    .maybeSingle();
+
+  if (!current || current.primary_muscles.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from("exercises")
+    .select(EXERCISE_SELECT)
+    .neq("id", exerciseId)
+    .eq("category", current.category)
+    .overlaps("primary_muscles", current.primary_muscles)
+    .limit(limit);
+
+  if (error || !data) return [];
+  return data.map(exerciseRowToSummary);
 }
 
 export async function getExerciseHistory(userId: string, exerciseId: string, limit = 10) {
