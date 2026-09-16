@@ -41,7 +41,7 @@ export default function SignupPage() {
       return;
     }
 
-    router.push("/plans");
+    router.push("/onboarding");
     router.refresh();
   }
 
