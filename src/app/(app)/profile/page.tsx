@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { X } from "lucide-react";
+import { CalendarRange, ChevronRight, Hammer, X } from "lucide-react";
 import { getCurrentUserAndProfile } from "@/lib/profile/queries";
 import { getLifetimeStats } from "@/lib/progress/queries";
+import { getCurrentEnrollment } from "@/lib/programs/queries";
 import { daysSince } from "@/lib/date";
 import { SignOutButton } from "@/components/sign-out-button";
 import { PushNotificationToggle } from "@/components/push-notification-toggle";
@@ -9,7 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 
 export default async function ProfilePage() {
   const { userId, email, profile } = await getCurrentUserAndProfile();
-  const stats = await getLifetimeStats(userId);
+  const [stats, enrollment] = await Promise.all([getLifetimeStats(userId), getCurrentEnrollment(userId)]);
 
   const initial = (profile?.full_name ?? "A").trim().charAt(0).toUpperCase();
   const daysWithAscend = profile?.created_at ? daysSince(profile.created_at) : 0;
@@ -58,6 +59,42 @@ export default async function ProfilePage() {
           <PushNotificationToggle />
         </div>
       </section>
+
+      <section className="mt-6">
+        <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Plan</h2>
+        <Link href="/plans" className="mt-3 block">
+          <Card className="flex items-center gap-3 p-4 transition-colors hover:bg-muted">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary-soft text-accent-foreground">
+              <CalendarRange className="size-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="font-bold">{enrollment?.programName ?? "No plan chosen"}</p>
+              <p className="text-sm text-muted-foreground">
+                {enrollment ? "Change plan" : "Choose a workout plan to get scheduled"}
+              </p>
+            </div>
+            <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+          </Card>
+        </Link>
+      </section>
+
+      {profile?.role === "coach" && (
+        <section className="mt-6">
+          <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Coach</h2>
+          <Link href="/builder" className="mt-3 block">
+            <Card className="flex items-center gap-3 p-4 transition-colors hover:bg-muted">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary-soft text-accent-foreground">
+                <Hammer className="size-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="font-bold">Plan Builder</p>
+                <p className="text-sm text-muted-foreground">Build and publish workout plans</p>
+              </div>
+              <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+            </Card>
+          </Link>
+        </section>
+      )}
 
       <SignOutButton
         label="Sign out"

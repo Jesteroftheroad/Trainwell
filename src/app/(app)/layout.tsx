@@ -8,7 +8,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="flex min-h-dvh">
-      <Sidebar fullName={profile?.full_name ?? null} streak={profile?.current_streak ?? 0} />
+      <Sidebar
+        fullName={profile?.full_name ?? null}
+        streak={profile?.current_streak ?? 0}
+        isCoach={profile?.role === "coach"}
+      />
       <main className="flex-1 pb-24 md:pb-0">{children}</main>
       <BottomNav />
       <TimezoneSync currentTimezone={profile?.timezone ?? "UTC"} />

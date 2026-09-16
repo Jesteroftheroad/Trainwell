@@ -2,12 +2,20 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Flame } from "lucide-react";
+import { Flame, Hammer } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NAV_ITEMS } from "./nav-items";
 import { SignOutButton } from "@/components/sign-out-button";
 
-export function Sidebar({ fullName, streak }: { fullName: string | null; streak: number }) {
+export function Sidebar({
+  fullName,
+  streak,
+  isCoach,
+}: {
+  fullName: string | null;
+  streak: number;
+  isCoach: boolean;
+}) {
   const pathname = usePathname();
 
   return (
@@ -40,6 +48,21 @@ export function Sidebar({ fullName, streak }: { fullName: string | null; streak:
             </Link>
           );
         })}
+        {isCoach && (
+          <Link
+            href="/builder"
+            aria-current={pathname.startsWith("/builder") ? "page" : undefined}
+            className={cn(
+              "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors",
+              pathname.startsWith("/builder")
+                ? "bg-primary-soft text-accent-foreground"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground",
+            )}
+          >
+            <Hammer className="size-5" />
+            Builder
+          </Link>
+        )}
       </nav>
 
       <div className="flex items-center justify-between rounded-xl bg-muted px-3 py-2.5 text-sm font-semibold">
