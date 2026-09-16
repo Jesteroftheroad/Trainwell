@@ -64,15 +64,24 @@ export async function startWorkoutSession({
   } = await supabase.auth.getUser();
   if (!user) return { error: "Not signed in." };
 
-  // Resume an in-progress session for the same workout instead of duplicating it.
-  const { data: existing } = await supabase
-    .from("workout_sessions")
-    .select("id")
-    .eq("user_id", user.id)
-    .eq("workout_id", workoutId)
-    .eq("status", "in_progress")
-    .maybeSingle();
+  // Resume an in-progress session for the same workout instead of duplicating
+  // it. Ordered + limited to one row so this never errors out if a race (a
+  // double-tap, or a retry right as the browser closes) already produced more
+  // than one in-progress row for this workout — .maybeSingle() alone would
+  // throw on that and silently fall through to creating a fresh, empty
+  // session below, wiping the appearance of everything already logged.
+  const findInProgressSession = () =>
+    supabase
+      .from("workout_sessions")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("workout_id", workoutId)
+      .eq("status", "in_progress")
+      .order("started_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
+  const { data: existing } = await findInProgressSession();
   if (existing) return { sessionId: existing.id };
 
   const { data, error } = await supabase
@@ -86,7 +95,17 @@ export async function startWorkoutSession({
     .select("id")
     .single();
 
-  if (error || !data) return { error: error?.message ?? "Could not start workout." };
+  if (error) {
+    // Lost the race against a concurrent request for the same workout — the
+    // unique index on (user_id, workout_id) where status = 'in_progress'
+    // rejected this insert. Resume whichever one won instead of erroring.
+    if (error.code === "23505") {
+      const { data: winner } = await findInProgressSession();
+      if (winner) return { sessionId: winner.id };
+    }
+    return { error: error.message };
+  }
+  if (!data) return { error: "Could not start workout." };
   return { sessionId: data.id };
 }
 
