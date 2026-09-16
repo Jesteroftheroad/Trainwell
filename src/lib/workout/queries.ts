@@ -286,27 +286,46 @@ export async function getSessionForPlayer(
 const EXERCISE_SELECT =
   "id, name, slug, category, equipment, primary_muscles, secondary_muscles, instructions, common_mistakes, media_url, thumbnail_url, default_unit, created_at";
 
-/** Other exercises that hit at least one of the same primary muscles in the same category — candidates for an in-session swap. */
+function sharesAny(a: string[], b: string[]): boolean {
+  return a.some((m) => b.includes(m));
+}
+
+/**
+ * Other exercises in the same category that train an overlapping muscle —
+ * candidates for an in-session swap. Tries an exact primary-muscle overlap
+ * first; the library tags closely related areas inconsistently (e.g. "lats"
+ * vs "upper back" vs "back" for what a trainee would call the same back
+ * exercise), so an exact-only match left the dialog empty for several
+ * exercises even though a same-category substitute existed. When nothing
+ * matches exactly, this falls back to any overlap between the two exercises'
+ * combined primary + secondary muscles instead of returning nothing.
+ */
 export async function getAlternativeExercises(exerciseId: string, limit = 6): Promise<ExerciseSummary[]> {
   const supabase = await createClient();
   const { data: current } = await supabase
     .from("exercises")
-    .select("category, primary_muscles")
+    .select("category, primary_muscles, secondary_muscles")
     .eq("id", exerciseId)
     .maybeSingle();
 
   if (!current || current.primary_muscles.length === 0) return [];
 
-  const { data, error } = await supabase
+  const { data: sameCategory, error } = await supabase
     .from("exercises")
     .select(EXERCISE_SELECT)
     .neq("id", exerciseId)
-    .eq("category", current.category)
-    .overlaps("primary_muscles", current.primary_muscles)
-    .limit(limit);
+    .eq("category", current.category);
 
-  if (error || !data) return [];
-  return data.map(exerciseRowToSummary);
+  if (error || !sameCategory) return [];
+
+  const exactMatches = sameCategory.filter((ex) => sharesAny(ex.primary_muscles, current.primary_muscles));
+  if (exactMatches.length > 0) return exactMatches.slice(0, limit).map(exerciseRowToSummary);
+
+  const currentMuscles = [...current.primary_muscles, ...(current.secondary_muscles ?? [])];
+  const relatedMatches = sameCategory.filter((ex) =>
+    sharesAny([...ex.primary_muscles, ...(ex.secondary_muscles ?? [])], currentMuscles),
+  );
+  return relatedMatches.slice(0, limit).map(exerciseRowToSummary);
 }
 
 export async function getExerciseHistory(userId: string, exerciseId: string, limit = 10) {
