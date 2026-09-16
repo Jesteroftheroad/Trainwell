@@ -218,6 +218,36 @@ export type PushSubscriptionRow = {
   created_at: string;
 }
 
+export type ProgramRow = {
+  id: string;
+  coach_id: string | null;
+  name: string;
+  description: string | null;
+  is_published: boolean;
+  created_at: string;
+}
+
+export type ProgramWeekRow = {
+  id: string;
+  program_id: string;
+  week_number: number;
+}
+
+export type ProgramDayRow = {
+  id: string;
+  program_week_id: string;
+  day_of_week: number;
+  workout_id: string | null;
+}
+
+export type ProgramEnrollmentRow = {
+  id: string;
+  user_id: string;
+  program_id: string;
+  started_on: string;
+  created_at: string;
+}
+
 export type Database = {
   public: {
     Tables: {
@@ -260,6 +290,16 @@ export type Database = {
         [Relationship<"conversation_id", "conversations">, Relationship<"sender_id", "profiles">]
       >;
       push_subscriptions: Table<PushSubscriptionRow, [Relationship<"user_id", "profiles">]>;
+      programs: Table<ProgramRow, [Relationship<"coach_id", "profiles">]>;
+      program_weeks: Table<ProgramWeekRow, [Relationship<"program_id", "programs">]>;
+      program_days: Table<
+        ProgramDayRow,
+        [Relationship<"program_week_id", "program_weeks">, Relationship<"workout_id", "workouts">]
+      >;
+      program_enrollments: Table<
+        ProgramEnrollmentRow,
+        [Relationship<"user_id", "profiles">, Relationship<"program_id", "programs">]
+      >;
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

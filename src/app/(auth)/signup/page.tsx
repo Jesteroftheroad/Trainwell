@@ -41,7 +41,7 @@ export default function SignupPage() {
       return;
     }
 
-    router.push("/today");
+    router.push("/plans");
     router.refresh();
   }
 
@@ -61,7 +61,7 @@ export default function SignupPage() {
     <div>
       <h1 className="text-2xl font-black">Create your account</h1>
       <p className="mt-1 text-sm text-muted-foreground">
-        Your first two weeks of workouts are ready the moment you sign up.
+        Pick a workout plan right after you sign up and your schedule is ready instantly.
       </p>
 
       <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
