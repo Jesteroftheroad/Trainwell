@@ -75,7 +75,11 @@ export default async function ProfilePage() {
             <div className="min-w-0 flex-1">
               <p className="font-bold">{enrollment?.programName ?? "No plan chosen"}</p>
               <p className="text-sm text-muted-foreground">
-                {enrollment ? "Change plan" : "Choose a workout plan to get scheduled"}
+                {enrollment?.status === "active"
+                  ? "Change plan"
+                  : enrollment
+                    ? "Waiting for activation code"
+                    : "Choose a workout plan to get scheduled"}
               </p>
             </div>
             <ChevronRight className="size-4 shrink-0 text-muted-foreground" />

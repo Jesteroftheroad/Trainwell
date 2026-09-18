@@ -22,6 +22,21 @@ export function formatWeight(weight: number | null, unit: string | null): string
   return `${trimmed} ${unit ?? "lb"}`;
 }
 
+export function slugify(value: string): string {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+export function parseTagList(value: string): string[] {
+  return value
+    .split(",")
+    .map((tag) => tag.trim().toLowerCase())
+    .filter(Boolean);
+}
+
 export function titleCase(value: string): string {
   return value
     .split(/[_\s]+/)
