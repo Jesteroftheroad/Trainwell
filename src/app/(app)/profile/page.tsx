@@ -1,11 +1,10 @@
 import Link from "next/link";
-import { CalendarRange, ChevronRight, Hammer, X } from "lucide-react";
+import { CalendarRange, ChevronRight, Hammer, Settings, X } from "lucide-react";
 import { getCurrentUserAndProfile } from "@/lib/profile/queries";
 import { getLifetimeStats } from "@/lib/progress/queries";
 import { getCurrentEnrollment } from "@/lib/programs/queries";
 import { daysSince } from "@/lib/date";
 import { SignOutButton } from "@/components/sign-out-button";
-import { PushNotificationToggle } from "@/components/push-notification-toggle";
 import { Card, CardContent } from "@/components/ui/card";
 
 export default async function ProfilePage() {
@@ -52,12 +51,18 @@ export default async function ProfilePage() {
       </section>
 
       <section className="mt-6">
-        <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-          Notifications
-        </h2>
-        <div className="mt-3">
-          <PushNotificationToggle />
-        </div>
+        <Link href="/settings" className="block">
+          <Card className="flex items-center gap-3 p-4 transition-colors hover:bg-muted">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary-soft text-accent-foreground">
+              <Settings className="size-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="font-bold">Settings</p>
+              <p className="text-sm text-muted-foreground">Theme, notifications, and account</p>
+            </div>
+            <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+          </Card>
+        </Link>
       </section>
 
       <section className="mt-6">

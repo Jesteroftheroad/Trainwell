@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { Flame } from "lucide-react";
+import { Flame, Settings } from "lucide-react";
 import { getCurrentUserAndProfile } from "@/lib/profile/queries";
 import { getWeekMainWorkouts } from "@/lib/workout/queries";
-import { getTodayIsoInTimezone, getWeekIsoDatesInTimezone } from "@/lib/date";
+import { getGreeting, getTodayIsoInTimezone, getWeekIsoDatesInTimezone } from "@/lib/date";
 import { GoalCard } from "@/components/today/goal-card";
 import { WeeklySurveyCard } from "@/components/today/weekly-survey-card";
 import { DayWorkoutPanel } from "@/components/today/day-workout-panel";
@@ -15,7 +15,10 @@ export default async function TodayPage() {
 
   const weekWorkouts = await getWeekMainWorkouts(userId, weekDates);
 
-  const initial = (profile?.full_name ?? "A").trim().charAt(0).toUpperCase();
+  const fullName = profile?.full_name?.trim() || "Athlete";
+  const firstName = fullName.split(" ")[0];
+  const initial = fullName.charAt(0).toUpperCase();
+  const greeting = getGreeting(timezone);
 
   return (
     <div className="mx-auto max-w-2xl px-4 pt-6 pb-10 sm:px-6">
@@ -23,14 +26,25 @@ export default async function TodayPage() {
         <Link
           href="/profile"
           aria-label="Open profile"
-          className="flex size-11 items-center justify-center rounded-full bg-primary-soft text-lg font-black text-accent-foreground"
+          className="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary-soft text-lg font-black text-accent-foreground"
         >
           {initial}
         </Link>
-        <div className="flex items-center gap-1.5 rounded-full bg-muted px-3 py-1.5 text-sm font-bold">
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-xs font-medium text-muted-foreground">{greeting},</p>
+          <p className="truncate text-base font-bold">{firstName}</p>
+        </div>
+        <div className="flex shrink-0 items-center gap-1.5 rounded-full bg-muted px-3 py-1.5 text-sm font-bold">
           <Flame className="size-4 text-warning" />
           {profile?.current_streak ?? 0}
         </div>
+        <Link
+          href="/settings"
+          aria-label="Settings"
+          className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
+          <Settings className="size-5" />
+        </Link>
       </header>
 
       <div className="mt-6 flex flex-col gap-3">

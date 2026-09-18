@@ -68,6 +68,22 @@ export function formatLongDateWithOrdinal(isoDate: string): string {
   return `${weekdayMonth} ${day}${ordinalSuffix(day)}`;
 }
 
+export function getGreeting(timezone: string): string {
+  let hour: number;
+  try {
+    hour = Number(new Intl.DateTimeFormat("en-US", { timeZone: timezone, hour: "numeric", hour12: false }).format(new Date()));
+  } catch {
+    hour = new Date().getHours();
+  }
+  if (hour === 24) hour = 0; // some locales format midnight as "24" with hour12: false
+
+  if (hour < 5) return "Good night";
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  if (hour < 21) return "Good evening";
+  return "Good night";
+}
+
 export function daysSince(isoDateTime: string): number {
   const then = new Date(isoDateTime).getTime();
   const now = Date.now();

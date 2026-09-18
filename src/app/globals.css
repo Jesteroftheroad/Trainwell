@@ -9,21 +9,25 @@
   --muted-foreground: #6b6878;
   --border: #e7e5ec;
   --input: #e7e5ec;
-  --ring: #7c3aed;
 
+  /* Accent color: overridden per data-accent below. Soft/tint tokens derive
+     from it and --background via color-mix so they adapt automatically to
+     both the chosen accent and light/dark mode without needing a separate
+     value for every accent × mode combination. */
   --primary: #6d28d9;
   --primary-foreground: #ffffff;
-  --primary-soft: #f2ecfd;
+  --ring: var(--primary);
+  --primary-soft: color-mix(in srgb, var(--primary) 12%, var(--background));
 
-  --secondary: #f4f3f7;
-  --secondary-foreground: #16141f;
+  --secondary: var(--muted);
+  --secondary-foreground: var(--foreground);
 
-  --accent: #f2ecfd;
-  --accent-foreground: #6d28d9;
+  --accent: var(--primary-soft);
+  --accent-foreground: var(--primary);
 
   --success: #16a34a;
   --success-foreground: #ffffff;
-  --success-soft: #eafaf0;
+  --success-soft: color-mix(in srgb, var(--success) 12%, var(--background));
 
   --danger: #dc2626;
   --danger-foreground: #ffffff;
@@ -32,6 +36,50 @@
   --warning-foreground: #ffffff;
 
   --radius: 1rem;
+}
+
+/* Dark mode: either the OS preference (when no explicit choice was made,
+   i.e. no data-theme="light" override) or an explicit data-theme="dark". */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --background: #0f0e15;
+    --foreground: #f2f1f6;
+    --card: #17151f;
+    --card-foreground: #f2f1f6;
+    --muted: #201e2a;
+    --muted-foreground: #9d9aab;
+    --border: #2c2938;
+    --input: #2c2938;
+  }
+}
+
+:root[data-theme="dark"] {
+  --background: #0f0e15;
+  --foreground: #f2f1f6;
+  --card: #17151f;
+  --card-foreground: #f2f1f6;
+  --muted: #201e2a;
+  --muted-foreground: #9d9aab;
+  --border: #2c2938;
+  --input: #2c2938;
+}
+
+/* Accent presets: only --primary changes — every other accent-derived token
+   (ring, soft tints, accent-foreground) recomputes from it automatically. */
+:root[data-accent="blue"] {
+  --primary: #2563eb;
+}
+:root[data-accent="green"] {
+  --primary: #15803d;
+}
+:root[data-accent="rose"] {
+  --primary: #e11d48;
+}
+:root[data-accent="orange"] {
+  --primary: #ea580c;
+}
+:root[data-accent="slate"] {
+  --primary: #334155;
 }
 
 @theme inline {
