@@ -1,5 +1,6 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
+import type { EnrollmentStatus } from "@/lib/supabase/database.types";
 
 export interface PublishedProgramSummary {
   id: string;
@@ -22,16 +23,17 @@ export async function getPublishedPrograms(): Promise<PublishedProgramSummary[]>
 export interface CurrentEnrollment {
   programId: string;
   programName: string;
+  status: EnrollmentStatus;
 }
 
 export async function getCurrentEnrollment(userId: string): Promise<CurrentEnrollment | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("program_enrollments")
-    .select("program_id, programs ( name )")
+    .select("program_id, status, programs ( name )")
     .eq("user_id", userId)
     .maybeSingle();
 
   if (error || !data) return null;
-  return { programId: data.program_id, programName: data.programs?.name ?? "Your plan" };
+  return { programId: data.program_id, programName: data.programs?.name ?? "Your plan", status: data.status };
 }

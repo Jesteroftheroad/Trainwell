@@ -5,7 +5,15 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { enrollInProgram } from "@/lib/programs/actions";
 
-export function ChoosePlanButton({ programId, isCurrent }: { programId: string; isCurrent: boolean }) {
+export function ChoosePlanButton({
+  programId,
+  isSelected,
+  isActive,
+}: {
+  programId: string;
+  isSelected: boolean;
+  isActive: boolean;
+}) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -18,14 +26,27 @@ export function ChoosePlanButton({ programId, isCurrent }: { programId: string; 
         setError(result.error);
         return;
       }
-      router.push("/today");
+      router.refresh();
     });
   }
 
+  const label = isPending
+    ? "Selecting…"
+    : isActive
+      ? "Active plan"
+      : isSelected
+        ? "Selected — waiting for code"
+        : "Select this plan";
+
   return (
     <div className="flex shrink-0 flex-col items-end gap-1">
-      <Button size="sm" variant={isCurrent ? "outline" : "default"} disabled={isPending} onClick={handleClick}>
-        {isPending ? "Starting…" : isCurrent ? "Current plan" : "Start this plan"}
+      <Button
+        size="sm"
+        variant={isSelected ? "outline" : "default"}
+        disabled={isPending || isSelected}
+        onClick={handleClick}
+      >
+        {label}
       </Button>
       {error && <span className="text-xs font-medium text-danger">{error}</span>}
     </div>

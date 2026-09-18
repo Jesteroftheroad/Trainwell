@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Dumbbell, ListChecks } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { getCurrentUserAndProfile } from "@/lib/profile/queries";
@@ -19,6 +19,21 @@ export default async function BuilderPage() {
       <p className="mt-1 text-sm text-muted-foreground">
         Build named weekly plans from your workout library. Publish one so clients can pick it when they sign up.
       </p>
+
+      <div className="mt-6 grid grid-cols-2 gap-3">
+        <Link href="/builder/exercises">
+          <Card className="flex items-center gap-3 p-4 transition-colors hover:bg-muted">
+            <ListChecks className="size-5 shrink-0 text-accent-foreground" />
+            <span className="font-bold">Exercises</span>
+          </Card>
+        </Link>
+        <Link href="/builder/workouts">
+          <Card className="flex items-center gap-3 p-4 transition-colors hover:bg-muted">
+            <Dumbbell className="size-5 shrink-0 text-accent-foreground" />
+            <span className="font-bold">Workouts</span>
+          </Card>
+        </Link>
+      </div>
 
       <div className="mt-6">
         <NewProgramForm />

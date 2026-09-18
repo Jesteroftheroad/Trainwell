@@ -240,11 +240,25 @@ export type ProgramDayRow = {
   workout_id: string | null;
 }
 
+export type EnrollmentStatus = "pending" | "active";
+
 export type ProgramEnrollmentRow = {
   id: string;
   user_id: string;
   program_id: string;
   started_on: string;
+  status: EnrollmentStatus;
+  activated_at: string | null;
+  created_at: string;
+}
+
+export type ActivationCodeRow = {
+  id: string;
+  coach_id: string;
+  program_id: string | null;
+  code: string;
+  redeemed_by: string | null;
+  redeemed_at: string | null;
   created_at: string;
 }
 
@@ -300,8 +314,17 @@ export type Database = {
         ProgramEnrollmentRow,
         [Relationship<"user_id", "profiles">, Relationship<"program_id", "programs">]
       >;
+      activation_codes: Table<
+        ActivationCodeRow,
+        [Relationship<"coach_id", "profiles">, Relationship<"program_id", "programs">, Relationship<"redeemed_by", "profiles">]
+      >;
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      redeem_activation_code: {
+        Args: { p_code: string };
+        Returns: { error: string } | { ok: true; program_id: string };
+      };
+    };
   };
 }
