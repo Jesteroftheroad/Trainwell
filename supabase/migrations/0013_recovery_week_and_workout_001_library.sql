@@ -55,7 +55,16 @@ values
   ('Jumping Lunge', 'jumping-lunge', 'cardio', '{bodyweight}', '{quads,glutes}', '{}', 'From a lunge position, jump and switch legs in the air, landing softly back into a lunge.', 'bodyweight'),
   ('Broad Jump', 'broad-jump', 'cardio', '{bodyweight}', '{quads,glutes}', '{}', 'From standing, swing your arms and jump forward as far as possible, landing softly with bent knees.', 'bodyweight'),
   ('Kettlebell Gorilla Row', 'kettlebell-gorilla-row', 'strength', '{kettlebell}', '{back}', '{biceps}', 'Hinged over with two kettlebells on the floor, row one at a time while the other hand braces on its handle.', 'lb'),
-  ('Y-Balance Reach', 'y-balance', 'mobility', '{bodyweight}', '{hips,ankles}', '{}', 'Balancing on one leg, reach the other leg forward, then to the side, then behind you in a Y pattern.', 'time')
+  ('Y-Balance Reach', 'y-balance', 'mobility', '{bodyweight}', '{hips,ankles}', '{}', 'Balancing on one leg, reach the other leg forward, then to the side, then behind you in a Y pattern.', 'time'),
+  -- These six ship in migration 0007 too, but are re-declared here (safe no-op
+  -- via ON CONFLICT if 0007 already ran) since the workouts below depend on
+  -- them and 0007 wasn't applied to this database yet.
+  ('Burpee', 'burpee', 'cardio', '{bodyweight}', '{full body}', '{}', 'Drop into a squat, kick your feet back to a plank, do a push-up, jump your feet back in, then explode up into a jump.', 'bodyweight'),
+  ('Mountain Climbers', 'mountain-climbers', 'cardio', '{bodyweight}', '{core}', '{shoulders}', 'From a plank position, drive your knees toward your chest one at a time at a quick pace.', 'time'),
+  ('Dead Bug', 'dead-bug', 'core', '{bodyweight}', '{abs}', '{lower back}', 'Lying on your back with arms up and knees bent 90 degrees, slowly extend the opposite arm and leg while keeping your lower back pressed into the floor.', 'bodyweight'),
+  ('Plank Shoulder Tap', 'plank-shoulder-tap', 'core', '{bodyweight}', '{abs,shoulders}', '{}', 'From a plank, alternate tapping each hand to the opposite shoulder while keeping your hips as still as possible.', 'bodyweight'),
+  ('Side Plank', 'side-plank', 'core', '{bodyweight}', '{obliques}', '{}', 'Balance on one forearm and the side of your foot, keeping your body in a straight line with your hips lifted.', 'time'),
+  ('Jump Squat', 'jump-squat', 'cardio', '{bodyweight}', '{quads,glutes}', '{}', 'Squat down, then explode upward into a jump, landing softly back into the squat.', 'bodyweight')
 on conflict (slug) do nothing;
 
 -- ---------------------------------------------------------------------------
