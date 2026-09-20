@@ -2,13 +2,19 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { getCurrentUserAndProfile } from "@/lib/profile/queries";
-import { getActivationCodesForProgram, getProgramDetail, getWorkoutOptions } from "@/lib/builder/queries";
+import {
+  getActivationCodesForProgram,
+  getProgramDetail,
+  getProgramRoster,
+  getWorkoutOptions,
+} from "@/lib/builder/queries";
 import { ProgramMetaForm } from "@/components/builder/program-meta-form";
 import { PublishToggle } from "@/components/builder/publish-toggle";
 import { AddWeekButton } from "@/components/builder/add-week-button";
 import { DeleteProgramButton } from "@/components/builder/delete-program-button";
 import { DaySelect } from "@/components/builder/day-select";
 import { ActivationCodesPanel } from "@/components/builder/activation-codes-panel";
+import { ProgramRoster } from "@/components/builder/program-roster";
 
 export default async function ProgramEditPage({
   params,
@@ -19,10 +25,11 @@ export default async function ProgramEditPage({
   const { profile } = await getCurrentUserAndProfile();
   if (profile?.role !== "coach") redirect("/today");
 
-  const [program, workoutOptions, activationCodes] = await Promise.all([
+  const [program, workoutOptions, activationCodes, roster] = await Promise.all([
     getProgramDetail(programId),
     getWorkoutOptions(),
     getActivationCodesForProgram(programId),
+    getProgramRoster(programId),
   ]);
   if (!program) notFound();
 
@@ -75,6 +82,11 @@ export default async function ProgramEditPage({
             A plan with more than one week cycles through them in order, then repeats from Week 1.
           </p>
         </div>
+      </div>
+
+      <div className="mt-8">
+        <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-muted-foreground">Clients</h2>
+        <ProgramRoster roster={roster} />
       </div>
 
       <div className="mt-8">

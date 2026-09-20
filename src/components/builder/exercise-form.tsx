@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { createExercise, updateExercise, type ExerciseInput } from "@/lib/builder/actions";
+import { Trash2 } from "lucide-react";
+import { createExercise, deleteExercise, updateExercise, type ExerciseInput } from "@/lib/builder/actions";
 import type { ExerciseLibraryItem } from "@/lib/builder/queries";
 import type { DefaultUnit, ExerciseCategory } from "@/lib/supabase/database.types";
 
@@ -41,6 +42,21 @@ export function ExerciseForm({ exerciseId, exercise }: { exerciseId?: string; ex
     setError(null);
     startTransition(async () => {
       const result = exerciseId ? await updateExercise(exerciseId, form) : await createExercise(form);
+      if ("error" in result) {
+        setError(result.error);
+        return;
+      }
+      router.push("/builder/exercises");
+      router.refresh();
+    });
+  }
+
+  function handleDelete() {
+    if (!exerciseId) return;
+    if (!confirm("Delete this exercise? This can't be undone.")) return;
+    setError(null);
+    startTransition(async () => {
+      const result = await deleteExercise(exerciseId);
       if ("error" in result) {
         setError(result.error);
         return;
@@ -158,6 +174,13 @@ export function ExerciseForm({ exerciseId, exercise }: { exerciseId?: string; ex
       <Button size="lg" disabled={isPending} onClick={handleSave}>
         {isPending ? "Saving…" : exerciseId ? "Save changes" : "Add exercise"}
       </Button>
+
+      {exerciseId && (
+        <Button variant="ghost" className="gap-1.5 text-danger" disabled={isPending} onClick={handleDelete}>
+          <Trash2 className="size-4" />
+          Delete exercise
+        </Button>
+      )}
     </div>
   );
 }
