@@ -79,6 +79,16 @@ export type ProfileRow = {
   updated_at: string;
 }
 
+export type CoachClientStatus = "active" | "pending" | "ended";
+
+export type CoachClientRow = {
+  id: string;
+  coach_id: string;
+  client_id: string;
+  status: CoachClientStatus;
+  created_at: string;
+}
+
 export type ExerciseRow = {
   id: string;
   name: string;
@@ -266,6 +276,10 @@ export type Database = {
   public: {
     Tables: {
       profiles: Table<ProfileRow>;
+      coach_clients: Table<
+        CoachClientRow,
+        [Relationship<"coach_id", "profiles">, Relationship<"client_id", "profiles">]
+      >;
       exercises: Table<ExerciseRow>;
       workouts: Table<WorkoutRow>;
       workout_sections: Table<WorkoutSectionRow, [Relationship<"workout_id", "workouts">]>;

@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { getCurrentUserAndProfile } from "@/lib/profile/queries";
 import { getCoachPrograms } from "@/lib/builder/queries";
 import { NewProgramForm } from "@/components/builder/new-program-form";
+import { DuplicateProgramButton } from "@/components/builder/duplicate-program-button";
 
 export default async function BuilderPage() {
   const { userId, profile } = await getCurrentUserAndProfile();
@@ -55,6 +56,7 @@ export default async function BuilderPage() {
               <Badge variant={program.isPublished ? "success" : "muted"}>
                 {program.isPublished ? "Published" : "Draft"}
               </Badge>
+              <DuplicateProgramButton programId={program.id} />
               <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
             </Card>
           </Link>

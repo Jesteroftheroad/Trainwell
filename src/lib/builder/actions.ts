@@ -4,7 +4,7 @@ import { randomInt } from "crypto";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { parseTagList, slugify } from "@/lib/utils";
-import { getExerciseLibrary, type ExerciseLibraryItem } from "./queries";
+import { getExerciseLibrary, getProgramDetail, type ExerciseLibraryItem } from "./queries";
 import type {
   DefaultUnit,
   ExerciseCategory,
@@ -89,6 +89,50 @@ export async function updateProgramMeta(
   revalidatePath("/builder");
   revalidatePath(`/builder/${programId}`);
   return { ok: true };
+}
+
+export async function duplicateProgram(programId: string): Promise<{ programId: string } | { error: string }> {
+  const auth = await requireCoach();
+  if ("error" in auth) return auth;
+  const { supabase, userId } = auth;
+
+  const original = await getProgramDetail(programId);
+  if (!original) return { error: "Plan not found." };
+
+  const { data: newProgram, error } = await supabase
+    .from("programs")
+    .insert({
+      coach_id: userId,
+      name: `${original.name} (Copy)`,
+      description: original.description,
+      is_published: false,
+    })
+    .select("id")
+    .single();
+
+  if (error || !newProgram) return { error: error?.message ?? "Could not duplicate plan." };
+
+  for (const week of original.weeks) {
+    const { data: newWeek, error: weekError } = await supabase
+      .from("program_weeks")
+      .insert({ program_id: newProgram.id, week_number: week.weekNumber })
+      .select("id")
+      .single();
+
+    if (weekError || !newWeek) return { error: weekError?.message ?? "Could not duplicate weeks." };
+
+    const dayRows = week.days
+      .filter((d) => d.workoutId)
+      .map((d) => ({ program_week_id: newWeek.id, day_of_week: d.dayOfWeek, workout_id: d.workoutId as string }));
+
+    if (dayRows.length > 0) {
+      const { error: dayError } = await supabase.from("program_days").insert(dayRows);
+      if (dayError) return { error: dayError.message };
+    }
+  }
+
+  revalidatePath("/builder");
+  return { programId: newProgram.id };
 }
 
 export async function setProgramPublished(
@@ -311,6 +355,20 @@ export async function updateExercise(
 
   revalidatePath("/builder/exercises");
   revalidatePath(`/builder/exercises/${exerciseId}`);
+  return { ok: true };
+}
+
+export async function deleteExercise(exerciseId: string): Promise<{ ok: true } | { error: string }> {
+  const auth = await requireCoach();
+  if ("error" in auth) return auth;
+  const { supabase } = auth;
+
+  const { error } = await supabase.from("exercises").delete().eq("id", exerciseId);
+  if (error) {
+    return { error: "Could not delete — it's used in one or more workouts. Remove it there first." };
+  }
+
+  revalidatePath("/builder/exercises");
   return { ok: true };
 }
 

@@ -2,6 +2,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import type {
   DefaultUnit,
+  EnrollmentStatus,
   ExerciseCategory,
   ExerciseSide,
   SectionType,
@@ -70,6 +71,7 @@ export interface ProgramWeekDetail {
 
 export interface ProgramDetail {
   id: string;
+  coachId: string | null;
   name: string;
   description: string | null;
   isPublished: boolean;
@@ -106,7 +108,7 @@ export async function getProgramDetail(programId: string): Promise<ProgramDetail
   const supabase = await createClient();
   const { data: program, error } = await supabase
     .from("programs")
-    .select("id, name, description, is_published")
+    .select("id, coach_id, name, description, is_published")
     .eq("id", programId)
     .maybeSingle();
 
@@ -135,11 +137,36 @@ export async function getProgramDetail(programId: string): Promise<ProgramDetail
 
   return {
     id: program.id,
+    coachId: program.coach_id,
     name: program.name,
     description: program.description,
     isPublished: program.is_published,
     weeks: weekDetails,
   };
+}
+
+export interface RosterEntry {
+  userId: string;
+  fullName: string | null;
+  status: EnrollmentStatus;
+  startedOn: string;
+}
+
+export async function getProgramRoster(programId: string): Promise<RosterEntry[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("program_enrollments")
+    .select("user_id, status, started_on, profiles ( full_name )")
+    .eq("program_id", programId)
+    .order("started_on", { ascending: false });
+
+  if (error || !data) return [];
+  return data.map((e) => ({
+    userId: e.user_id,
+    fullName: e.profiles?.full_name ?? null,
+    status: e.status,
+    startedOn: e.started_on,
+  }));
 }
 
 const EXERCISE_LIBRARY_SELECT =

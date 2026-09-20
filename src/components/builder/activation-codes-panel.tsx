@@ -2,10 +2,10 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Copy, Plus } from "lucide-react";
+import { Copy, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { generateActivationCode } from "@/lib/builder/actions";
+import { generateActivationCode, revokeActivationCode } from "@/lib/builder/actions";
 import type { ActivationCodeSummary } from "@/lib/builder/queries";
 
 export function ActivationCodesPanel({
@@ -40,6 +40,19 @@ export function ActivationCodesPanel({
     navigator.clipboard?.writeText(justCreated).then(() => setCopied(true));
   }
 
+  function handleRevoke(codeId: string) {
+    if (!confirm("Revoke this code? It can no longer be redeemed.")) return;
+    setError(null);
+    startTransition(async () => {
+      const result = await revokeActivationCode(programId, codeId);
+      if ("error" in result) {
+        setError(result.error);
+        return;
+      }
+      router.refresh();
+    });
+  }
+
   return (
     <div>
       <Button size="sm" className="gap-1.5" disabled={isPending} onClick={handleGenerate}>
@@ -64,7 +77,21 @@ export function ActivationCodesPanel({
         {codes.map((c) => (
           <div key={c.id} className="flex items-center justify-between rounded-xl border border-border p-3">
             <span className="font-mono font-bold tracking-wider">{c.code}</span>
-            <Badge variant={c.redeemed ? "success" : "muted"}>{c.redeemed ? "Redeemed" : "Unused"}</Badge>
+            <div className="flex items-center gap-2">
+              <Badge variant={c.redeemed ? "success" : "muted"}>{c.redeemed ? "Redeemed" : "Unused"}</Badge>
+              {!c.redeemed && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Revoke code"
+                  className="text-danger"
+                  disabled={isPending}
+                  onClick={() => handleRevoke(c.id)}
+                >
+                  <X className="size-4" />
+                </Button>
+              )}
+            </div>
           </div>
         ))}
       </div>

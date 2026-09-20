@@ -94,6 +94,15 @@ export async function enrollInProgram(programId: string): Promise<{ ok: true } |
     );
   if (error) return { error: error.message };
 
+  // Best-effort: lets the coach see this client as "pending" on their
+  // roster before a code is redeemed. Not fatal if it fails — the roster
+  // just won't show them by name until they activate.
+  if (program.coachId) {
+    await supabase
+      .from("coach_clients")
+      .upsert({ coach_id: program.coachId, client_id: user.id, status: "pending" }, { onConflict: "coach_id,client_id" });
+  }
+
   revalidatePath("/plans");
   revalidatePath("/profile");
   return { ok: true };
