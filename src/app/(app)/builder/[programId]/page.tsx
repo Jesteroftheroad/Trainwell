@@ -2,12 +2,13 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { getCurrentUserAndProfile } from "@/lib/profile/queries";
-import { getProgramDetail, getWorkoutOptions } from "@/lib/builder/queries";
+import { getActivationCodesForProgram, getProgramDetail, getWorkoutOptions } from "@/lib/builder/queries";
 import { ProgramMetaForm } from "@/components/builder/program-meta-form";
 import { PublishToggle } from "@/components/builder/publish-toggle";
 import { AddWeekButton } from "@/components/builder/add-week-button";
 import { DeleteProgramButton } from "@/components/builder/delete-program-button";
 import { DaySelect } from "@/components/builder/day-select";
+import { ActivationCodesPanel } from "@/components/builder/activation-codes-panel";
 
 export default async function ProgramEditPage({
   params,
@@ -18,7 +19,11 @@ export default async function ProgramEditPage({
   const { profile } = await getCurrentUserAndProfile();
   if (profile?.role !== "coach") redirect("/today");
 
-  const [program, workoutOptions] = await Promise.all([getProgramDetail(programId), getWorkoutOptions()]);
+  const [program, workoutOptions, activationCodes] = await Promise.all([
+    getProgramDetail(programId),
+    getWorkoutOptions(),
+    getActivationCodesForProgram(programId),
+  ]);
   if (!program) notFound();
 
   return (
@@ -70,6 +75,17 @@ export default async function ProgramEditPage({
             A plan with more than one week cycles through them in order, then repeats from Week 1.
           </p>
         </div>
+      </div>
+
+      <div className="mt-8">
+        <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-muted-foreground">
+          Activation codes
+        </h2>
+        <p className="mb-3 text-xs text-muted-foreground">
+          Give a client one of these codes after they sign up and pick this plan — redeeming it schedules their
+          next 3 months.
+        </p>
+        <ActivationCodesPanel programId={program.id} codes={activationCodes} />
       </div>
 
       <div className="mt-10 border-t border-border pt-4">
